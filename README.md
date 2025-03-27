@@ -1,107 +1,110 @@
-🚀 CodeChat
-A Next-Generation Real-Time Collaborative Coding Platform
+# 🚀 CodeChat  
+**A Next-Generation Real-Time Collaborative Coding Platform**
 
+![CodeChat Logo](https://raw.githubusercontent.com/anandj1/whimsical-code-collection/main/public/favicon.png)  
+*Update the URL above with your actual logo location in the repository.*
 
-![CodeChat Logo](https://github.com/anandj1/ChatCode/blob/main/public/favicon.png)
+---
 
+## 📌 Table of Contents
 
-📌 Table of Contents
-🔹 Introduction
+- [Introduction](#introduction)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Deployment](#deployment)
+- [Contributing](#contributing)
+- [License](#license)
+- [Contact](#contact)
 
-✨ Features
+---
 
-🛠️ Tech Stack
+## Introduction
 
-⚙️ Installation
+Welcome to **CodeChat** – the ultimate real-time collaborative coding platform designed for developers, interviewers, and teams. Whether you’re working remotely, pair programming, or hosting technical interviews, CodeChat brings all your collaboration needs into one seamless, secure experience.
 
-🚀 Usage
+**Why CodeChat?**  
+- **Real-Time Collaboration:** Instant code synchronization with live editing, syntax highlighting, and smart autocompletion.
+- **Private & Secure Rooms:** Create password-protected sessions for exclusive, confidential coding.
+- **Integrated Communication:** Enjoy HD video calls and a markdown-enabled chat for rich, interactive discussions.
+- **Modern Authentication:** Sign in effortlessly using Google or GitHub OAuth.
+- **Mobile-Responsive:** Experience a smooth, adaptive interface across desktops, tablets, and smartphones.
 
-📡 Deployment
+---
 
-🤝 Contributing
+## Features
 
-📜 License
+- **💻 Real-Time Code Collaboration:**  
+  Every keystroke syncs immediately with advanced syntax highlighting and autocompletion.
 
-📬 Contact
+- **🔒 Private & Secure Rooms:**  
+  Create exclusive, password-protected sessions for team meetings, interviews, or private coding projects.
 
-🔹 Introduction
-Welcome to CodeChat – the ultimate real-time collaborative coding platform designed for developers, interviewers, and teams. Whether you're working remotely, conducting pair programming, or running technical interviews, CodeChat ensures seamless collaboration with its integrated live code editor, chat, and video calls.
+- **📹 HD Video & Rich Chat:**  
+  Integrated video calls and chat with markdown support enable dynamic, on-the-fly communication.
 
-💡 Why CodeChat?
+- **🔑 Google & GitHub Authentication:**  
+  Modern OAuth sign-in for secure, hassle-free access.
 
-Eliminates the hassle of switching between multiple tools.
+- **📱 Fully Mobile Responsive:**  
+  Designed with a mobile-first approach, ensuring a consistent experience on any device.
 
-Provides secure, private coding rooms.
+- **⚙️ Robust Backend & Real-Time APIs:**  
+  Powered by a custom Node.js API and Socket.io, delivering low-latency, real-time collaboration.
 
-Enables real-time collaboration with minimal latency.
+- **🛡️ Enhanced Security & Scalability:**  
+  Utilizes JWT for session management, encrypted communication, and optimized database indexing.
 
-✨ Features
-✔ 💻 Real-Time Code Collaboration – Instant synchronization with syntax highlighting and autocompletion.
+- **🚀 Streamlined DevOps & CI/CD:**  
+  Automated deployments ensure high availability and smooth, zero-downtime updates.
 
-✔ 🔒 Private & Secure Rooms – Password-protected private coding spaces for teams and interviews.
+---
 
-✔ 📹 HD Video & Chat Support – Built-in video calls and chat with markdown support for smooth discussions.
+## Tech Stack
 
-✔ 🔑 Google & GitHub Authentication – Modern OAuth sign-in for seamless onboarding.
+### **Frontend:**
+- **React with TypeScript** – For a type-safe, scalable UI.
+- **Tailwind CSS & ShadcnUI** – Providing modern, responsive design.
+- **Socket.io-client** – Enabling real-time communication.
 
-✔ 📱 Fully Mobile Responsive – Works across desktops, tablets, and mobile devices.
+### **Backend:**
+- **Node.js & Express** – Fast and efficient API development.
+- **Socket.io** – Powers live, low-latency updates.
+- **MongoDB + Mongoose** – Robust database for storing users and room data.
 
-✔ ⚙️ Real-Time Backend – Powered by Socket.io for low-latency live collaboration.
+### **Authentication:**
+- **OAuth (Google & GitHub)** – Secure, modern authentication.
+- **JWT** – For reliable session management.
 
-✔ 🛡️ Secure & Scalable – Encrypted communication, JWT authentication, and database optimization for performance & security.
+### **Deployment:**
+- **CI/CD Pipelines** – Automated, seamless updates.
+- **Cloud-Based Hosting** – Ensures scalability and high availability.
 
-✔ 🚀 DevOps-Optimized Deployment – Ensures smooth CI/CD automation for stability and reliability.
+---
 
-🛠️ Tech Stack
-Frontend:
-⚡ React with TypeScript – Type-safe, scalable UI.
+## Installation
 
-🎨 Tailwind CSS & ShadcnUI – Modern, responsive design.
+### **Prerequisites:**
+- **Node.js (v14 or above)**
+- **npm or yarn**
+- **MongoDB instance** (local or cloud)
 
-🔗 Socket.io-client – Real-time updates.
+### **Setup:**
 
-Backend:
-🚀 Node.js & Express – Fast & efficient API.
+1. **Clone the Repository:**
+   
+   git clone https://github.com/anandj1/ChatCode.git
+   cd ChatCode
 
-🔄 Socket.io – Live communication engine.
-
-🗄️ MongoDB + Mongoose – Stores user and room data.
-
-Authentication:
-🔑 OAuth (Google & GitHub) – Secure login.
-
-🔐 JWT for session management.
-
-Deployment:
-🛠️ CI/CD Pipelines for seamless updates.
-
-🖥 Cloud-based Hosting for high availability.
-
-⚙️ Installation
-✅ Prerequisites
-Ensure you have:
-
-Node.js (v14 or above)
-
-npm or yarn
-
-MongoDB instance (local or cloud)
-
-🚀 Setup
-1️⃣ Clone the repository
-sh
-Copy
-Edit
-git clone https://github.com/anandj1/whimsical-code-collection.git
-cd whimsical-code-collection
-2️⃣ Install dependencies
+### 2️⃣ Install dependencies
 sh
 Copy
 Edit
 npm install
 # OR
 yarn install
-3️⃣ Configure Environment Variables
+### 3️⃣ Configure Environment Variables
 Create a .env file in the root directory and set your credentials:
 
 env
@@ -117,7 +120,7 @@ GITHUB_CLIENT_SECRET=your_github_client_secret
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 FRONTEND_URL=your_frontend_url
-4️⃣ Run the Application
+### 4️⃣ Run the Application
 sh
 Copy
 Edit
@@ -126,63 +129,62 @@ npm run dev
 yarn dev
 Your frontend and backend should now be running locally! 🎉
 
-🚀 Usage
-🌟 Create & Join Rooms – Instantly create a coding session or join an existing one.
+### 🚀 Usage
+### 🌟 Create & Join Rooms – Instantly create a coding session or join an existing one.
 
-💬 Chat & Video Call – Engage in discussions while collaborating in real-time.
+### 💬 Chat & Video Call – Engage in discussions while collaborating in real-time.
 
-🔑 Authenticate Securely – Sign in with Google/GitHub OAuth to save your work.
+### 🔑 Authenticate Securely – Sign in with Google/GitHub OAuth to save your work.
 
-📱 Use on Any Device – Enjoy a fully mobile-responsive experience!
+### 📱 Use on Any Device – Enjoy a fully mobile-responsive experience!
 
-📡 Deployment
+### 📡 Deployment
 CodeChat is deployed with modern DevOps practices, ensuring:
 
-🚀 High Availability – Sessions stay live even during high traffic.
+### 🚀 High Availability – Sessions stay live even during high traffic.
 
-🔄 CI/CD Automation – Fast, zero-downtime deployments.
+### 🔄 CI/CD Automation – Fast, zero-downtime deployments.
 
-📡 Scalable Architecture – Optimized for low latency & high performance.
+### 📡 Scalable Architecture – Optimized for low latency & high performance.
 
-This ensures a smooth experience for all users, with seamless updates and high uptime.
+### This ensures a smooth experience for all users, with seamless updates and high uptime.
 
-🤝 Contributing
+### 🤝 Contributing
 Want to improve CodeChat? Contributions are welcome! 🎉
 
 Steps to contribute:
-1️⃣ Fork the repository
-2️⃣ Create a branch:
+### 1️⃣ Fork the repository
+### 2️⃣ Create a branch:
 
 sh
 Copy
 Edit
 git checkout -b feature/my-feature
-3️⃣ Commit changes:
+### 3️⃣ Commit changes:
 
 sh
 Copy
 Edit
 git commit -m "Added new feature"
-4️⃣ Push to branch:
+### 4️⃣ Push to branch:
 
 sh
 Copy
 Edit
-git push origin feature/my-feature
-5️⃣ Open a Pull Request 🚀
+### git push origin feature/my-feature
+### 5️⃣ Open a Pull Request 🚀
 
-📜 License
+### 📜 License
 This project is open-source and available under the MIT License. See the LICENSE file for details.
 
-📬 Contact
+### 📬 Contact
 💡 Have questions or want to collaborate? Reach out!
 
-📧 Email: your.email@example.com
-🔗 LinkedIn: Your LinkedIn Profile
+### 📧 Email: anandj12215@gmail.com
+### 🔗 LinkedIn: https://www.linkedin.com/in/anandjsharma/
 
-⭐ Show Your Support!
-If you find CodeChat useful, consider starring ⭐ the repository!
+### ⭐ Show Your Support!
+### If you find CodeChat useful, consider starring ⭐ the repository!
 
-🔗 GitHub Repo
 
 Happy Coding! 🚀
