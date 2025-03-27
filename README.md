@@ -1,4 +1,4 @@
-#### CodeChat  
+# CodeChat  
 **A Next-Generation Real-Time Collaborative Coding Platform**
 
 ![CodeChat Logo](https://github.com/anandj1/ChatCode/blob/main/public/favicon.png)  
