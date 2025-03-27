@@ -170,7 +170,7 @@ const Hero: React.FC = () => {
               
               <div className="flex flex-wrap gap-4">
                 {[
-                  { text: "No Pyament required", icon: <Check size={14} /> },
+                  { text: "No Payments required", icon: <Check size={14} /> },
                   { text: "End-to-end encryption", icon: <Lock size={14} /> },
                   { text: "Unlimited collaborators", icon: <Check size={14} /> },
                   { text: "Create Private Rooms", icon: <Check size={14} /> }
