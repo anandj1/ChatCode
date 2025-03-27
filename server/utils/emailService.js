@@ -27,7 +27,7 @@ const createTransporter = () => {
 };
 
 // Email logo URL
-const logoUrl = 'https://ibb.co/XrdWcc3H';
+const logoUrl = '/favicon.png';
 
 // Consistent email template styling
 const emailStyles = {
@@ -38,7 +38,7 @@ const emailStyles = {
   otpContainer: 'background: #f8f9fa; padding: 20px; margin: 20px 0; text-align: center; border-radius: 8px;',
   otpCode: 'color: #007bff; letter-spacing: 8px; font-size: 32px; font-weight: bold; margin: 0;',
   footer: 'text-align: center; margin-top: 20px; color: #666; font-size: 12px;',
-  logo: 'width: 100px; height: auto; margin: 0 auto 15px;'
+  logo: 'width: 100px; height: 100px; border-radius: 50%; object-fit: cover'
 };
 
 const sendEmail = async ({ to, subject, html }) => {

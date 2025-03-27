@@ -5,7 +5,7 @@ const { sendEmail } = require('../utils/email');
 const { authenticateToken } = require('../middleware/auth');
 
 // Logo URL for emails
-const logoUrl = 'https://ibb.co/XrdWcc3H';
+const logoUrl = '/favicon.png';
 
 // Send a contact form email
 router.post('/send', async (req, res) => {
@@ -21,7 +21,7 @@ router.post('/send', async (req, res) => {
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="text-align: center; margin-bottom: 20px;">
-              <img src="${logoUrl}" alt="ChatCode Logo" style="width: 120px; height: auto;" />
+              <img src="${logoUrl}" alt="ChatCode Logo" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover" />
             </div>
             <h2>New Contact Form Submission</h2>
             <p><strong>Name:</strong> ${name}</p>
@@ -52,7 +52,7 @@ router.post('/send', async (req, res) => {
           emailHtml = `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <div style="text-align: center; margin-bottom: 20px;">
-                <img src="${logoUrl}" alt="ChatCode Logo" style="width: 120px; height: auto;" />
+                <img src="${logoUrl}" alt="ChatCode Logo" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover" />
               </div>
               ${html}
             </div>

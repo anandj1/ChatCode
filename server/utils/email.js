@@ -27,7 +27,7 @@ const createTransporter = () => {
 };
 
 // Logo URL for emails
-const logoUrl = 'https://ibb.co/XrdWcc3H';
+const logoUrl = '/favicon.png';
 
 // Function to send verification email with OTP
 const sendVerificationEmail = async (email, otp) => {
@@ -44,7 +44,7 @@ const sendVerificationEmail = async (email, otp) => {
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
           <div style="text-align: center; margin-bottom: 20px;">
-            <img src="${logoUrl}" alt="ChatCode Logo" style="width: 120px; height: auto;" />
+            <img src="${logoUrl}" alt="ChatCode Logo" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover"/>
           </div>
           <h2 style="color: #4f46e5;">Verify Your Email</h2>
           <p>Thank you for signing up with ChatCode! Please use the following code to verify your email address:</p>
@@ -81,7 +81,7 @@ const sendEmail = async ({ to, subject, text, html }) => {
       html: html || `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
           <div style="text-align: center; margin-bottom: 20px;">
-            <img src="${logoUrl}" alt="ChatCode Logo" style="width: 120px; height: auto;" />
+            <img src="${logoUrl}" alt="ChatCode Logo" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover" />
           </div>
           ${text}
         </div>

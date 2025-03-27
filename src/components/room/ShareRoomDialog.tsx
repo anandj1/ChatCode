@@ -34,7 +34,7 @@ const ShareRoomDialog: React.FC<ShareRoomDialogProps> = ({
   const { toast } = useToast();
 
   const roomLink = `${window.location.origin}/room/${roomId}`;
-  const logoUrl = 'https://ibb.co/XrdWcc3H';
+  const logoUrl = '/favicon.png';
 
   const copyRoomLink = () => {
     navigator.clipboard.writeText(roomLink);
@@ -102,7 +102,7 @@ const ShareRoomDialog: React.FC<ShareRoomDialogProps> = ({
             html: `
               <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
                 <div style="text-align: center; margin-bottom: 20px;">
-                  <img src="${window.location.origin}${logoUrl}" alt="ChatCode Logo" style="width: 120px; height: auto;" />
+                  <img src="${window.location.origin}${logoUrl}" alt="ChatCode Logo" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover" />
                 </div>
                 <h2 style="color: #4f46e5;">Room Invitation</h2>
                 <p>You've been invited to join the ChatCode room: <strong>${roomName}</strong></p>
@@ -143,7 +143,7 @@ const ShareRoomDialog: React.FC<ShareRoomDialogProps> = ({
             html: `
               <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
                 <div style="text-align: center; margin-bottom: 20px;">
-                  <img src="${window.location.origin}${logoUrl}" alt="ChatCode Logo" style="width: 120px; height: auto;" />
+                  <img src="${window.location.origin}${logoUrl}" alt="ChatCode Logo" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover" />
                 </div>
                 <h2 style="color: #4f46e5;">Join ChatCode!</h2>
                 <p>You've been invited to join the room: <strong>${roomName}</strong></p>
