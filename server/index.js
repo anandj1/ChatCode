@@ -20,7 +20,7 @@ const server = http.createServer(app);
 
 // Middleware
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: ['https://chat-code-eta.vercel.app/','http://localhost:5173'],
   credentials: true
 }));
 app.use(express.json());
@@ -34,7 +34,7 @@ app.use('/api/email', emailRoutes);
 // Socket.io setup
 const io = new Server(server, {
   cors: {
-    origin: 'http://localhost:5173',
+    origin: 'https://chat-code-eta.vercel.app/',
     methods: ['GET', 'POST']
   }
 });
@@ -46,7 +46,7 @@ io.on('connection', (socket) => {
 
 // Database connection
 mongoose
-  .connect(process.env.MONGODB_URI || 'mongodb://localhost:5173/chatcode')
+  .connect(process.env.MONGODB_URI )
   .then(() => {
     console.log('Connected to MongoDB');
   })
