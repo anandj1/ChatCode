@@ -27,7 +27,7 @@ const createTransporter = () => {
 };
 
 // Email logo URL
-const logoUrl = '/favicon.png';
+const logoUrl = 'https://ibb.co/XrdWcc3H';
 
 // Consistent email template styling
 const emailStyles = {
