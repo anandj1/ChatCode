@@ -174,38 +174,39 @@ const Register: React.FC = () => {
       <div className="min-h-screen flex flex-col items-center justify-center px-4 md:px-6 py-12 bg-gradient-to-b from-primary/5 to-background">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-               <Link to="/" className="flex items-center justify-center gap-3 text-2xl font-semibold">
-                      <motion.div
-                        className="relative rounded-full overflow-hidden border-2 border-primary/30 p-1"
-                        initial="initial"
-                        animate="animate"
-                        whileHover="hover"
-                        variants={logoVariants}
-                      >
-                        <motion.div 
-                          className="absolute inset-0 bg-gradient-to-r from-primary/20 to-blue-700/20 rounded-full"
-                          animate={{
-                            rotate: [0, 360]
-                          }}
-                          transition={{
-                            duration: 20,
-                            repeat: Infinity,
-                            ease: "linear"
-                          }}
-                        />
-                        <div className="w-8 h-8 rounded-full overflow-hidden relative z-10 bg-black/20 backdrop-blur-sm flex items-center justify-center text-2xl">
-                          <motion.img 
-                            src="/favicon.png" 
-                            alt="ChatCode Logo" 
-                            className="w-6 h-6 object-contain"
-                            initial={{ opacity: 0.9 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ duration: 1 }}
-                          />
-                        </div>
-                      </motion.div>
-                      ChatCode
-                    </Link>
+          <Link to="/" className="flex items-center justify-center gap-4 text-3xl md:text-4xl font-semibold">
+  <motion.div
+    className="relative rounded-full overflow-hidden border-2 border-primary/30 p-2"
+    initial="initial"
+    animate="animate"
+    whileHover="hover"
+    variants={logoVariants}
+  >
+    <motion.div 
+      className="absolute inset-0 bg-gradient-to-r from-primary/20 to-blue-700/20 rounded-full"
+      animate={{
+        rotate: [0, 360]
+      }}
+      transition={{
+        duration: 20,
+        repeat: Infinity,
+        ease: "linear"
+      }}
+    />
+    <div className="w-12 h-12 rounded-full overflow-hidden relative z-10 bg-black/20 backdrop-blur-sm flex items-center justify-center text-2xl">
+      <motion.img 
+        src="/favicon.png" 
+        alt="ChatCode Logo" 
+        className="w-10 h-10 object-contain"
+        initial={{ opacity: 0.9 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 1 }}
+      />
+    </div>
+  </motion.div>
+  <span className="font-bold">ChatCode</span>
+</Link>
+
           
             <h1 className="text-3xl font-bold mt-6">Create an account</h1>
             <p className="text-muted-foreground mt-2">
