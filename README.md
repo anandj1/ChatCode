@@ -1,8 +1,8 @@
-# 🚀 CodeChat  
+###  🚀 CodeChat  
 **A Next-Generation Real-Time Collaborative Coding Platform**
 
-![CodeChat Logo](https://raw.githubusercontent.com/anandj1/whimsical-code-collection/main/public/favicon.png)  
-*Update the URL above with your actual logo location in the repository.*
+![CodeChat Logo](https://github.com/anandj1/ChatCode/blob/main/public/favicon.png)  
+
 
 ---
 
