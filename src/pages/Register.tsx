@@ -193,7 +193,7 @@ const Register: React.FC = () => {
                             ease: "linear"
                           }}
                         />
-                        <div className="w-8 h-8 rounded-full overflow-hidden relative z-10 bg-black/20 backdrop-blur-sm flex items-center justify-center">
+                        <div className="w-8 h-8 rounded-full overflow-hidden relative z-10 bg-black/20 backdrop-blur-sm flex items-center justify-center text-2xl">
                           <motion.img 
                             src="/favicon.png" 
                             alt="ChatCode Logo" 
