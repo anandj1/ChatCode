@@ -327,7 +327,6 @@ const Index: React.FC = () => {
           <section className="py-24 md:py-32 relative overflow-hidden">
             <div className="absolute inset-0 z-0">
               <div className="absolute inset-0 bg-gradient-to-r from-blue-900/30 to-primary/30"></div>
-              <div className="absolute inset-0 bg-[url('https://ui-avatars.com/api/?background=1d4ed8&color=dbeafe&name=Pattern')] opacity-5 bg-repeat bg-[length:60px_60px]"></div>
             </div>
             
             <div className="container mx-auto px-6 relative z-10">

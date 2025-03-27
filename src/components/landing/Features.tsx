@@ -1,9 +1,8 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Code, Video, MessageSquare, Users, Sparkles, Shield, Zap, Globe } from 'lucide-react';
 import { useIntersectionObserver } from '@/utils/animations';
-import { motion } from 'framer-motion';
+import { motion, Variants } from 'framer-motion';
 
 const features = [
   {
@@ -56,7 +55,7 @@ const features = [
   }
 ];
 
-const container = {
+const container: Variants = {
   hidden: { opacity: 0 },
   show: {
     opacity: 1,
@@ -66,9 +65,38 @@ const container = {
   }
 };
 
-const item = {
+const item: Variants = {
   hidden: { opacity: 0, y: 20 },
   show: { opacity: 1, y: 0 }
+};
+
+const logoVariants: Variants = {
+  initial: { 
+    scale: 1,
+    rotate: 0,
+    boxShadow: "0px 0px 0px rgba(94, 129, 244, 0)"
+  },
+  hover: { 
+    scale: 1.1,
+    rotate: 0,
+    boxShadow: "0px 0px 20px rgba(94, 129, 244, 0.7)",
+    transition: {
+      duration: 0.3
+    }
+  },
+  animate: { 
+    scale: [1, 1.05, 1],
+    boxShadow: [
+      "0px 0px 0px rgba(94, 129, 244, 0.3)",
+      "0px 0px 20px rgba(94, 129, 244, 0.7)",
+      "0px 0px 0px rgba(94, 129, 244, 0.3)"
+    ],
+    transition: {
+      duration: 2,
+      repeat: Infinity,
+      repeatType: "reverse"
+    }
+  }
 };
 
 const Features: React.FC = () => {
@@ -130,26 +158,74 @@ const Features: React.FC = () => {
           viewport={{ once: true }}
           transition={{ delay: 0.5 }}
         >
-          <div className="bg-gradient-to-r from-blue-900/20 via-primary/30 to-blue-900/20 p-8 md:p-12 rounded-xl">
-            <div className="flex flex-col items-center mb-6">
-              <img 
-                src="/favicon.png" 
-                alt="ChatCode Logo" 
-                className="w-24 h-24 object-contain mb-4 rounded-full"
-              />
-              <h3 className="text-2xl md:text-3xl font-bold mb-4">Ready to experience real-time collaboration?</h3>
+          <div className="bg-gradient-to-r from-blue-900/20 via-primary/30 to-blue-900/20 p-8 md:p-12 rounded-xl relative">
+            <div className="relative z-10 flex flex-col items-center mb-6">
+              <motion.div
+                className="relative mb-4 rounded-full overflow-hidden border-2 border-primary/30 p-1"
+                initial="initial"
+                animate="animate"
+                whileHover="hover"
+                variants={logoVariants}
+              >
+                <motion.div 
+                  className="absolute inset-0 bg-gradient-to-r from-primary/20 to-blue-700/20 rounded-full"
+                  animate={{
+                    rotate: [0, 360]
+                  }}
+                  transition={{
+                    duration: 20,
+                    repeat: Infinity,
+                    ease: "linear"
+                  }}
+                />
+                <div className="w-24 h-24 rounded-full overflow-hidden relative z-10 bg-black/20 backdrop-blur-sm flex items-center justify-center">
+                  <motion.img 
+                    src="/favicon.png" 
+                    alt="ChatCode Logo" 
+                    className="w-20 h-20 object-contain"
+                    initial={{ opacity: 0.9 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 1 }}
+                  />
+                </div>
+              </motion.div>
+
+              <h3 className="text-2xl md:text-3xl font-bold mb-4 relative">
+                Ready to experience real-time collaboration?
+                <motion.span 
+                  className="absolute -right-10 top-0 text-primary"
+                  animate={{ rotate: [0, 20, 0], scale: [1, 1.2, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                >
+                  
+                </motion.span>
+              </h3>
             </div>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
+            
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8 relative z-10">
               Join thousands of developers who use ChatCode for their collaborative coding needs.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Link to="/register" className="inline-block px-6 py-3 bg-primary text-white font-medium rounded-md hover:bg-primary/90 transition-colors">
+            
+            <div className="flex flex-col sm:flex-row gap-4 justify-center relative z-10">
+              <motion.div 
+                whileHover={{ scale: 1.05 }} 
+                whileTap={{ scale: 0.95 }}
+              >
+                <Link 
+                  to="/register" 
+                  className="inline-block px-6 py-3 bg-gradient-to-r from-primary to-blue-600 text-white font-medium rounded-md hover:from-primary/90 hover:to-blue-600/90 transition-colors shadow-lg shadow-primary/30"
+                >
                   Get Started for Free
                 </Link>
               </motion.div>
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Link to="/about" className="inline-block px-6 py-3 bg-secondary text-foreground font-medium rounded-md hover:bg-secondary/80 transition-colors">
+              <motion.div 
+                whileHover={{ scale: 1.05 }} 
+                whileTap={{ scale: 0.95 }}
+              >
+                <Link 
+                  to="/about" 
+                  className="inline-block px-6 py-3 bg-secondary text-foreground font-medium rounded-md hover:bg-secondary/80 transition-colors border border-primary/20"
+                >
                   Learn More
                 </Link>
               </motion.div>

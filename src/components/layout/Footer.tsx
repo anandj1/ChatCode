@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
-import { Github, Mail, Twitter } from 'lucide-react';
+import { Github, Linkedin, Mail, Twitter } from 'lucide-react';
 
 // Corrected from GitHub to Github (proper case for the import)
 
@@ -50,18 +50,18 @@ const Footer: React.FC = () => {
           <div>
             <h4 className="text-lg font-semibold mb-4">Connect With Us</h4>
             <div className="flex items-center space-x-4 mb-4">
-              <a href="#" className="text-gray-400 hover:text-primary transition-colors duration-200">
+              <a href="https://github.com/anandj1/" className="text-gray-400 hover:text-primary transition-colors duration-200">
                 <Github className="h-5 w-5" />
               </a>
-              <a href="#" className="text-gray-400 hover:text-primary transition-colors duration-200">
-                <Twitter className="h-5 w-5" />
+              <a href="https://www.linkedin.com/in/anandjsharma/?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app" className="text-gray-400 hover:text-primary transition-colors duration-200">
+                <Linkedin className="h-5 w-5" />
               </a>
-              <a href="#" className="text-gray-400 hover:text-primary transition-colors duration-200">
+              <a href="anandj12215@gmail.com" className="text-gray-400 hover:text-primary transition-colors duration-200">
                 <Mail className="h-5 w-5" />
               </a>
             </div>
             <p className="text-sm text-muted-foreground">
-              Email: support@chatcode.com
+              Email: anand2025sharma@gmail.com
             </p>
           </div>
         </div>

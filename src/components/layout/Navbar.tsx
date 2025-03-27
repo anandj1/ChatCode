@@ -1,10 +1,38 @@
-
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { motion } from 'framer-motion';
+import { motion, Variants } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Code, Menu, X } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
+
+const logoVariants: Variants = {
+  initial: { 
+    scale: 1,
+    rotate: 0,
+    boxShadow: "0px 0px 0px rgba(94, 129, 244, 0)"
+  },
+  hover: { 
+    scale: 1.1,
+    rotate: 0,
+    boxShadow: "0px 0px 20px rgba(94, 129, 244, 0.7)",
+    transition: {
+      duration: 0.3
+    }
+  },
+  animate: { 
+    scale: [1, 1.05, 1],
+    boxShadow: [
+      "0px 0px 0px rgba(94, 129, 244, 0.3)",
+      "0px 0px 20px rgba(94, 129, 244, 0.7)",
+      "0px 0px 0px rgba(94, 129, 244, 0.3)"
+    ],
+    transition: {
+      duration: 2,
+      repeat: Infinity,
+      repeatType: "reverse"
+    }
+  }
+};
 
 const Navbar: React.FC = () => {
   const { isAuthenticated, logout } = useAuth();
@@ -19,12 +47,35 @@ const Navbar: React.FC = () => {
   return (
     <nav className="bg-background border-b border-border sticky top-0 z-50">
       <div className="container max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2 text-xl font-semibold">
-          <motion.div 
-            whileHover={{ scale: 1.1 }}
-            className="flex items-center justify-center w-8 h-8 rounded-md bg-primary text-primary-foreground"
+        <Link to="/" className="flex items-center gap-3 text-xl font-semibold">
+          <motion.div
+            className="relative rounded-full overflow-hidden border-2 border-primary/30 p-1"
+            initial="initial"
+            animate="animate"
+            whileHover="hover"
+            variants={logoVariants}
           >
-            <Code className="h-4 w-4" />
+            <motion.div 
+              className="absolute inset-0 bg-gradient-to-r from-primary/20 to-blue-700/20 rounded-full"
+              animate={{
+                rotate: [0, 360]
+              }}
+              transition={{
+                duration: 20,
+                repeat: Infinity,
+                ease: "linear"
+              }}
+            />
+            <div className="w-8 h-8 rounded-full overflow-hidden relative z-10 bg-black/20 backdrop-blur-sm flex items-center justify-center">
+              <motion.img 
+                src="/favicon.png" 
+                alt="ChatCode Logo" 
+                className="w-6 h-6 object-contain"
+                initial={{ opacity: 0.9 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 1 }}
+              />
+            </div>
           </motion.div>
           ChatCode
         </Link>
