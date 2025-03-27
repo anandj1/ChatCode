@@ -34,7 +34,7 @@ const ShareRoomDialog: React.FC<ShareRoomDialogProps> = ({
   const { toast } = useToast();
 
   const roomLink = `${window.location.origin}/room/${roomId}`;
-  const logoUrl = 'https://ibb.co/XrdWcc3H';
+  const logoUrl = 'https://i.ibb.co/JwbcDDyZ/favicon.png';
 
   const copyRoomLink = () => {
     navigator.clipboard.writeText(roomLink);

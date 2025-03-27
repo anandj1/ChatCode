@@ -5,7 +5,7 @@ const { sendEmail } = require('../utils/email');
 const { authenticateToken } = require('../middleware/auth');
 
 // Logo URL for emails
-const logoUrl = 'https://ibb.co/XrdWcc3H';
+const logoUrl = 'https://i.ibb.co/JwbcDDyZ/favicon.png';
 
 // Send a contact form email
 router.post('/send', async (req, res) => {

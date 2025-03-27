@@ -27,7 +27,7 @@ const createTransporter = () => {
 };
 
 // Logo URL for emails
-const logoUrl = 'https://ibb.co/XrdWcc3H';
+const logoUrl = 'https://i.ibb.co/JwbcDDyZ/favicon.png';
 
 // Function to send verification email with OTP
 const sendVerificationEmail = async (email, otp) => {
