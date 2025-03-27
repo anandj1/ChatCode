@@ -1,3 +1,4 @@
+
 const nodemailer = require('nodemailer');
 
 // Create reusable transporter
@@ -25,6 +26,9 @@ const createTransporter = () => {
   return transporter;
 };
 
+// Email logo URL
+const logoUrl = 'https://ibb.co/XrdWcc3H';
+
 // Consistent email template styling
 const emailStyles = {
   container: 'font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;',
@@ -33,7 +37,8 @@ const emailStyles = {
   body: 'padding: 30px; background: white; border: 1px solid #e0e0e0; border-radius: 0 0 8px 8px;',
   otpContainer: 'background: #f8f9fa; padding: 20px; margin: 20px 0; text-align: center; border-radius: 8px;',
   otpCode: 'color: #007bff; letter-spacing: 8px; font-size: 32px; font-weight: bold; margin: 0;',
-  footer: 'text-align: center; margin-top: 20px; color: #666; font-size: 12px;'
+  footer: 'text-align: center; margin-top: 20px; color: #666; font-size: 12px;',
+  logo: 'width: 100px; height: auto; margin: 0 auto 15px;'
 };
 
 const sendEmail = async ({ to, subject, html }) => {
@@ -67,6 +72,7 @@ const sendContactEmail = async (name, email, message) => {
   const html = `
     <div style="${emailStyles.container}">
       <div style="${emailStyles.header}">
+        <img src="${logoUrl}" alt="ChatCode Logo" style="${emailStyles.logo}" />
         <h1 style="${emailStyles.headerTitle}">New Contact Form Submission</h1>
       </div>
       <div style="${emailStyles.body}">
@@ -98,12 +104,11 @@ const sendVerificationEmail = async (email, otp) => {
     const html = `
       <div style="${emailStyles.container}">
         <div style="${emailStyles.header}">
+          <img src="${logoUrl}" alt="ChatCode Logo" style="${emailStyles.logo}" />
           <h1 style="${emailStyles.headerTitle}">ChatCode Verification</h1>
         </div>
         <div style="${emailStyles.body}">
           <h2 style="color: #444;">Welcome to ChatCode!</h2>
-          <img src="https://ibb.co/XrdWcc3H" alt="ChatCode Logo";">
-
           <p style="color: #666; line-height: 1.6;">
             Thank you for registering. To complete your registration, please use the following verification code:
           </p>
@@ -139,11 +144,11 @@ const sendPasswordResetEmail = async (email, resetToken) => {
   const html = `
     <div style="${emailStyles.container}">
       <div style="${emailStyles.header}">
+        <img src="${logoUrl}" alt="ChatCode Logo" style="${emailStyles.logo}" />
         <h1 style="${emailStyles.headerTitle}">ChatCode Password Reset</h1>
       </div>
       <div style="${emailStyles.body}">
         <h2 style="color: #444;">Reset Your Password</h2>
-        <img src="https://ibb.co/XrdWcc3H" alt="ChatCode Logo";">
         <p style="color: #666; line-height: 1.6;">
           We received a request to reset your password. Use the following code to reset your password:
         </p>

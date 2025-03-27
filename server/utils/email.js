@@ -26,6 +26,9 @@ const createTransporter = () => {
   }
 };
 
+// Logo URL for emails
+const logoUrl = 'https://ibb.co/XrdWcc3H';
+
 // Function to send verification email with OTP
 const sendVerificationEmail = async (email, otp) => {
   try {
@@ -40,9 +43,10 @@ const sendVerificationEmail = async (email, otp) => {
       text: `Your verification code is: ${otp}. This code will expire in 10 minutes.`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <img src="${logoUrl}" alt="ChatCode Logo" style="width: 120px; height: auto;" />
+          </div>
           <h2 style="color: #4f46e5;">Verify Your Email</h2>
-            <img src="https://ibb.co/XrdWcc3H" alt="ChatCode Logo";">
-
           <p>Thank you for signing up with ChatCode! Please use the following code to verify your email address:</p>
           <div style="background-color: #f3f4f6; padding: 15px; border-radius: 5px; text-align: center; margin: 15px 0;">
             <span style="font-size: 24px; font-weight: bold; letter-spacing: 5px;">${otp}</span>
@@ -74,7 +78,14 @@ const sendEmail = async ({ to, subject, text, html }) => {
       to,
       subject,
       text,
-      html
+      html: html || `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <img src="${logoUrl}" alt="ChatCode Logo" style="width: 120px; height: auto;" />
+          </div>
+          ${text}
+        </div>
+      `
     };
 
     const info = await transporter.sendMail(mailOptions);

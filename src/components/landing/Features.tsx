@@ -130,8 +130,15 @@ const Features: React.FC = () => {
           viewport={{ once: true }}
           transition={{ delay: 0.5 }}
         >
-          <div className="bg-gradient-to-r from-primary/20 via-primary/40 to-primary/20 p-8 md:p-12 rounded-xl">
-            <h3 className="text-2xl md:text-3xl font-bold mb-4">Ready to experience real-time collaboration?</h3>
+          <div className="bg-gradient-to-r from-blue-900/20 via-primary/30 to-blue-900/20 p-8 md:p-12 rounded-xl">
+            <div className="flex flex-col items-center mb-6">
+              <img 
+                src="/favicon.png" 
+                alt="ChatCode Logo" 
+                className="w-24 h-24 object-contain mb-4 rounded-full"
+              />
+              <h3 className="text-2xl md:text-3xl font-bold mb-4">Ready to experience real-time collaboration?</h3>
+            </div>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
               Join thousands of developers who use ChatCode for their collaborative coding needs.
             </p>

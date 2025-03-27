@@ -4,6 +4,9 @@ const router = express.Router();
 const { sendEmail } = require('../utils/email');
 const { authenticateToken } = require('../middleware/auth');
 
+// Logo URL for emails
+const logoUrl = 'https://ibb.co/XrdWcc3H';
+
 // Send a contact form email
 router.post('/send', async (req, res) => {
   try {
@@ -17,6 +20,9 @@ router.post('/send', async (req, res) => {
         text: `Name: ${name}\nEmail: ${email}\nMessage: ${message}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="text-align: center; margin-bottom: 20px;">
+              <img src="${logoUrl}" alt="ChatCode Logo" style="width: 120px; height: auto;" />
+            </div>
             <h2>New Contact Form Submission</h2>
             <p><strong>Name:</strong> ${name}</p>
             <p><strong>Email:</strong> ${email}</p>
@@ -40,7 +46,20 @@ router.post('/send', async (req, res) => {
           return res.status(400).json({ success: false, error: 'Missing required fields' });
         }
         
-        const result = await sendEmail({ to, subject, text, html });
+        // Add logo to HTML if not already present
+        let emailHtml = html;
+        if (html && !html.includes(logoUrl)) {
+          emailHtml = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <div style="text-align: center; margin-bottom: 20px;">
+                <img src="${logoUrl}" alt="ChatCode Logo" style="width: 120px; height: auto;" />
+              </div>
+              ${html}
+            </div>
+          `;
+        }
+        
+        const result = await sendEmail({ to, subject, text, html: emailHtml });
         
         if (result) {
           return res.status(200).json({ success: true });

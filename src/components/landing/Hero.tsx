@@ -165,14 +165,15 @@ const Hero: React.FC = () => {
                   <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-white text-xs font-semibold border-2 border-background shadow-md">AS</div>
                   <div className="w-8 h-8 rounded-full bg-fuchsia-500 flex items-center justify-center text-white text-xs font-semibold border-2 border-background shadow-md">+5</div>
                 </div>
-                <p>Join 1,000+ developers using ChatCode</p>
+                <p>Join 500+ developers using ChatCode</p>
               </div>
               
               <div className="flex flex-wrap gap-4">
                 {[
-                  { text: "No credit card required", icon: <Check size={14} /> },
+                  { text: "No Pyament required", icon: <Check size={14} /> },
                   { text: "End-to-end encryption", icon: <Lock size={14} /> },
-                  { text: "Unlimited collaborators", icon: <Check size={14} /> }
+                  { text: "Unlimited collaborators", icon: <Check size={14} /> },
+                  { text: "Create Private Rooms", icon: <Check size={14} /> }
                 ].map((item, index) => (
                   <div key={index} className="flex items-center gap-1.5 text-sm text-muted-foreground bg-secondary/40 px-3 py-1.5 rounded-full">
                     <div className="w-4 h-4 rounded-full bg-primary/20 flex items-center justify-center text-primary">
@@ -355,9 +356,9 @@ export const ProgressDemo = () => {
                   <div className="p-3 space-y-3">
                     {[
                       { name: "You", avatar: "https://ui-avatars.com/api/?name=You&background=2563eb&color=fff", status: "Active" },
-                      { name: "John Smith", avatar: "https://ui-avatars.com/api/?name=John+Smith&background=f59e0b&color=fff", status: "Typing..." },
-                      { name: "Kim Lee", avatar: "https://ui-avatars.com/api/?name=Kim+Lee&background=10b981&color=fff", status: "Active" },
-                      { name: "Alex Chen", avatar: "https://ui-avatars.com/api/?name=Alex+Chen&background=8b5cf6&color=fff", status: "Away" },
+                      { name: "Rahul Sharma", avatar: "https://ui-avatars.com/api/?name=John+Smith&background=f59e0b&color=fff", status: "Typing..." },
+                      { name: "Nidhi Johnson", avatar: "https://ui-avatars.com/api/?name=Kim+Lee&background=10b981&color=fff", status: "Active" },
+                      { name: "James Garstang", avatar: "https://ui-avatars.com/api/?name=Alex+Chen&background=8b5cf6&color=fff", status: "Away" },
                     ].map((member, index) => (
                       <div key={index} className="flex items-center gap-2">
                         <div className="relative">
@@ -385,9 +386,9 @@ export const ProgressDemo = () => {
                       <div className="grid grid-cols-2 gap-1">
                         {[
                           "https://ui-avatars.com/api/?name=You&background=2563eb&color=fff",
-                          "https://ui-avatars.com/api/?name=John+Smith&background=f59e0b&color=fff",
-                          "https://ui-avatars.com/api/?name=Kim+Lee&background=10b981&color=fff",
-                          "https://ui-avatars.com/api/?name=Alex+Chen&background=8b5cf6&color=fff",
+                          "https://ui-avatars.com/api/?name=Rahul+Sharma&background=f59e0b&color=fff",
+                          "https://ui-avatars.com/api/?name=Nidhi+Johnson&background=10b981&color=fff",
+                          "https://ui-avatars.com/api/?name=James+Garstang&background=8b5cf6&color=fff",
                         ].map((avatar, index) => (
                           <div key={index} className="aspect-video bg-black/60 rounded-md relative overflow-hidden">
                             <img src={avatar} className="object-cover opacity-70 w-full h-full" alt="User" />

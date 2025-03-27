@@ -34,6 +34,7 @@ const ShareRoomDialog: React.FC<ShareRoomDialogProps> = ({
   const { toast } = useToast();
 
   const roomLink = `${window.location.origin}/room/${roomId}`;
+  const logoUrl = 'https://ibb.co/XrdWcc3H';
 
   const copyRoomLink = () => {
     navigator.clipboard.writeText(roomLink);
@@ -100,8 +101,10 @@ const ShareRoomDialog: React.FC<ShareRoomDialogProps> = ({
             text: `You've been invited to join "${roomName}" on ChatCode. Access the room here: ${roomLink}${password ? ` (Password: ${password})` : ''}`,
             html: `
               <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+                <div style="text-align: center; margin-bottom: 20px;">
+                  <img src="${window.location.origin}${logoUrl}" alt="ChatCode Logo" style="width: 120px; height: auto;" />
+                </div>
                 <h2 style="color: #4f46e5;">Room Invitation</h2>
-                <img src="https://ibb.co/XrdWcc3H" alt="ChatCode Logo";">
                 <p>You've been invited to join the ChatCode room: <strong>${roomName}</strong></p>
                 <p>Click the button below to join:</p>
                 <div style="text-align: center; margin: 25px 0;">
@@ -139,8 +142,10 @@ const ShareRoomDialog: React.FC<ShareRoomDialogProps> = ({
             text: `You've been invited to join "${roomName}" on ChatCode. Create an account to get started: ${window.location.origin}/register?email=${encodeURIComponent(email)}`,
             html: `
               <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+                <div style="text-align: center; margin-bottom: 20px;">
+                  <img src="${window.location.origin}${logoUrl}" alt="ChatCode Logo" style="width: 120px; height: auto;" />
+                </div>
                 <h2 style="color: #4f46e5;">Join ChatCode!</h2>
-                <img src="https://ibb.co/XrdWcc3H" alt="ChatCode Logo";">
                 <p>You've been invited to join the room: <strong>${roomName}</strong></p>
                 <p>To get started, you'll need to create a ChatCode account:</p>
                 <div style="text-align: center; margin: 25px 0;">
@@ -158,7 +163,7 @@ const ShareRoomDialog: React.FC<ShareRoomDialogProps> = ({
 
           toast({
             title: "Invitation sent",
-            description: `Since the specified gmail is not a member of our platform,an invitation to join ChatCode has been sent to ${email}`,
+            description: `Since the specified gmail is not a member of our platform, an invitation to join ChatCode has been sent to ${email}`,
             variant: "success",
           });
         } catch (error) {
