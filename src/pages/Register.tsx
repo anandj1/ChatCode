@@ -174,7 +174,7 @@ const Register: React.FC = () => {
       <div className="min-h-screen flex flex-col items-center justify-center px-4 md:px-6 py-12 bg-gradient-to-b from-primary/5 to-background">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-               <Link to="/" className="flex items-center gap-3 text-xl font-semibold">
+               <Link to="/" className="flex items-center justify-center gap-3 text-2xl font-semibold">
                       <motion.div
                         className="relative rounded-full overflow-hidden border-2 border-primary/30 p-1"
                         initial="initial"
