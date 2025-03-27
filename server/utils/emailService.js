@@ -41,6 +41,7 @@ const emailStyles = {
   logo: 'width: 100px; height: 100px; border-radius: 50%; object-fit: cover'
 };
 
+
 const sendEmail = async ({ to, subject, html }) => {
   try {
     console.log('Attempting to send email...');
@@ -144,8 +145,9 @@ const sendPasswordResetEmail = async (email, resetToken) => {
   const html = `
     <div style="${emailStyles.container}">
       <div style="${emailStyles.header}">
-        <img src="${logoUrl}" alt="ChatCode Logo" style="${emailStyles.logo}" />
+      
         <h1 style="${emailStyles.headerTitle}">ChatCode Password Reset</h1>
+          <img src="https://i.ibb.co/JwbcDDyZ/favicon.png" alt="ChatCode Logo" style="${emailStyles.logo}" />
       </div>
       <div style="${emailStyles.body}">
         <h2 style="color: #444;">Reset Your Password</h2>

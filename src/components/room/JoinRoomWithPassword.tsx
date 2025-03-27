@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock, EyeOff, Eye, Loader2, AlertTriangle } from 'lucide-react';
@@ -55,8 +54,12 @@ const JoinRoomWithPassword: React.FC<JoinRoomWithPasswordProps> = ({
           description: "Joined room successfully",
           variant: "success",
         });
+        // First call onSuccess to update parent component state
         onSuccess();
-        navigate(`/room/${roomId}`);
+        // Then set a small timeout before navigation to ensure state is updated
+        setTimeout(() => {
+          window.location.reload(); // Force reload to ensure fresh socket connection
+        }, 100);
       } else {
         setError(data.message || 'Failed to join room. Please check your password.');
       }
@@ -81,7 +84,7 @@ const JoinRoomWithPassword: React.FC<JoinRoomWithPasswordProps> = ({
 
       <form onSubmit={handleJoinRoom}>
         <div className="mb-4">
-          <label className="block text-sm font-medium mb-1.5 flex items-center gap-1.5" htmlFor="room-password">
+          <label className="block text-sm font-medium mb-1.5 items-center gap-1.5" htmlFor="room-password">
             <Lock className="h-4 w-4" />
             Room Password
           </label>
