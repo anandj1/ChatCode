@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import Index from '@/pages/Index';
 import About from '@/pages/About';
 import Contact from '@/pages/Contact';
@@ -30,7 +29,9 @@ function App() {
           <Route path="/oauth-callback" element={<OAuthCallback />} />
           <Route path="/rooms" element={<Rooms />} />
           <Route path="/room/:roomId" element={<Room />} />
-          <Route path="*" element={<NotFound />} />
+          {/* Catch all route for 404 */}
+          <Route path="/404" element={<NotFound />} />
+          <Route path="*" element={<Navigate to="/404" replace />} />
         </Routes>
         <Toaster />
       </Router>

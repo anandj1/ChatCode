@@ -10,7 +10,6 @@ const authRoutes = require('./routes/auth');
 const emailRoutes = require('./routes/email');
 const { handleSocketConnection } = require('./socket');
 
-
 // Load environment variables
 dotenv.config();
 
@@ -18,17 +17,25 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
-// Middleware
-app.use(cors({
-  origin: ['https://chat-code-eta.vercel.app/','http://localhost:5173'],
+// CORS Configuration with preflight handling
+const corsOptions = {
+  origin: ['https://chat-code-eta.vercel.app', 'http://localhost:5173'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  exposedHeaders: ['Authorization']
-}));
-app.use(express.json());
-app.options('*', cors());
+  exposedHeaders: ['Authorization'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204
+};
 
+// Apply CORS middleware
+app.use(cors(corsOptions));
+app.use(express.json());
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
 
 // Routes - Note the /api prefix to match frontend configuration
 app.use('/api/auth', authRoutes);
@@ -36,11 +43,12 @@ app.use('/api/rooms', roomRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/email', emailRoutes);
 
-// Socket.io setup
+// Socket.io setup with CORS
 const io = new Server(server, {
   cors: {
-    origin: 'https://chat-code-eta.vercel.app/',
-    methods: ['GET', 'POST']
+    origin: ['https://chat-code-eta.vercel.app', 'http://localhost:5173'],
+    methods: ['GET', 'POST'],
+    credentials: true
   }
 });
 
@@ -51,16 +59,13 @@ io.on('connection', (socket) => {
 
 // Database connection
 mongoose
-  .connect(process.env.MONGODB_URI )
+  .connect(process.env.MONGODB_URI)
   .then(() => {
     console.log('Connected to MongoDB');
   })
   .catch((err) => {
     console.error('MongoDB connection error:', err);
   });
-
-// Health check route
-
 
 // Start server
 const PORT = process.env.PORT || 5000;
