@@ -31,7 +31,6 @@ const corsOptions = {
 
 // Apply CORS middleware
 app.use(cors(corsOptions));
-app.options("*", cors());  // Allow all OPTIONS requests
 
 app.use(express.json());
 
