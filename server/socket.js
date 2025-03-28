@@ -1,3 +1,4 @@
+
 const Message = require('./models/Message');
 const Room = require('./models/Room');
 const User = require('./models/User');
@@ -78,6 +79,50 @@ const handleSocketConnection = (io, socket) => {
         return;
       }
 
+      // Find the room in the database
+      const room = await Room.findById(roomId)
+        .populate('participants.user', 'username')
+        .populate('sharedWith.user', 'username');
+      
+      if (!room) {
+        socket.emit('error', { message: 'Room not found' });
+        return;
+      }
+      
+      // Check authorization for private/password-protected rooms
+      const isOwner = room.owner.toString() === userId.toString();
+      const isSharedWith = room.sharedWith.some(share => 
+        share.user && share.user._id.toString() === userId.toString()
+      );
+      const isParticipant = room.participants.some(p => 
+        p.user && p.user._id.toString() === userId.toString()
+      );
+
+      // If room has a password and user is not already authorized
+      if (room.password && !isOwner && !isSharedWith && !isParticipant) {
+        // Check if provided password matches room password
+        if (!password) {
+          console.log(`Password required but not provided for room ${roomId}`);
+          socket.emit('error', { 
+            message: 'This room requires a password to join',
+            passwordRequired: true
+          });
+          return;
+        }
+        
+        if (password !== room.password) {
+          console.log(`Invalid password attempt for room ${roomId}`);
+          socket.emit('error', { 
+            message: 'Invalid room password',
+            passwordRequired: true
+          });
+          return;
+        }
+        
+        console.log(`Password validated successfully for room ${roomId}`);
+        // At this point, password is correct - continue with join process
+      }
+
       // Add user to the room
       socket.join(roomId);
       console.log(`User ${userId} (socket ${socket.id}) joined room ${roomId}`);
@@ -86,46 +131,14 @@ const handleSocketConnection = (io, socket) => {
       const user = await User.findById(userId).select('username avatar firstName displayName createdRooms');
       
       if (user) {
-        // Find the room in the database
-        const room = await Room.findById(roomId)
-          .populate('participants.user', 'username')
-          .populate('sharedWith.user', 'username');
-        
-        if (!room) {
-          socket.emit('error', { message: 'Room not found' });
-          return;
-        }
-        
-        // Check authorization for private/password-protected rooms
-        const isOwner = room.owner.toString() === userId.toString();
-        const isSharedWith = room.sharedWith.some(share => 
-          share.user && share.user._id.toString() === userId.toString()
-        );
-        const isParticipant = room.participants.some(p => 
-          p.user && p.user._id.toString() === userId.toString()
-        );
-
-        // If room has a password and user is not already authorized
-        if (room.password && !isOwner && !isSharedWith && !isParticipant) {
-          // Check if provided password matches room password
-          if (!password || password !== room.password) {
-            console.log(`Invalid password attempt for room ${roomId}`);
-            socket.emit('error', { 
-              message: 'Invalid room password',
-              passwordRequired: true
-            });
-            socket.leave(roomId);
-            return;
-          }
-          
-          // If password matches, add user as a participant
-          if (!isParticipant) {
-            room.participants.push({
-              user: userId,
-              joinedAt: new Date()
-            });
-            await room.save();
-          }
+        // If user has valid password or is already authorized, add as participant if not already
+        if (!isParticipant) {
+          console.log(`Adding new participant to room ${roomId}: ${userId}`);
+          room.participants.push({
+            user: userId,
+            joinedAt: new Date()
+          });
+          await room.save();
         }
         
         const userData = {
