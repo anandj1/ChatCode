@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Users, Search, Plus, Code, Clock, Tag, Trash2, AlertCircle } from 'lucide-react';
+import { Users, Search, Plus, Code, Clock, Tag, Trash2, AlertCircle, Lock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import PageTransition from '@/components/transitions/PageTransition';
 import Navbar from '@/components/layout/Navbar';
@@ -36,6 +36,8 @@ interface Room {
     username: string;
     avatar?: string;
   };
+  isPrivate: boolean;
+  password?: string;
   activeParticipantCount?: number;
 }
 
@@ -51,6 +53,7 @@ const Rooms: React.FC = () => {
   const [roomToDelete, setRoomToDelete] = useState<Room | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
+  const [fetchAttempts, setFetchAttempts] = useState(0);
 
   useEffect(() => {
     if (!isAuthenticated && !isLoading) {
@@ -79,9 +82,14 @@ const Rooms: React.FC = () => {
     
     setIsLoading(true);
     try {
+      console.log("Fetching rooms with token:", token ? "Token provided" : "No token");
+      
       const response = await fetch(buildApiUrl('rooms'), {
         headers: {
           'Authorization': `Bearer ${token}`,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
         }
       });
       
@@ -89,11 +97,19 @@ const Rooms: React.FC = () => {
         const data = await response.json();
         console.log('Fetched rooms:', data);
         
-        const roomsWithCounts = data.map(async (room: Room) => {
+        if (!Array.isArray(data) || data.length === 0) {
+          console.log("No rooms found or invalid response format");
+          setRooms([]);
+          setIsLoading(false);
+          return;
+        }
+        
+        const roomsWithCounts = await Promise.all(data.map(async (room: Room) => {
           try {
             const participantsResponse = await fetch(buildApiUrl(`rooms/${room._id || room.id}/participants`), {
               headers: {
                 'Authorization': `Bearer ${token}`,
+                'Cache-Control': 'no-cache'
               }
             });
             
@@ -113,10 +129,18 @@ const Rooms: React.FC = () => {
             console.error(`Failed to fetch participants for room ${room._id || room.id}:`, error);
             return room;
           }
+        }));
+        
+        roomsWithCounts.forEach(room => {
+          const roomId = room._id || room.id;
+          const ownerId = typeof room.owner === 'string' ? room.owner : (room.owner?._id || room.owner?.id);
+          const userId = user?.id || user?._id;
+          
+          console.log(`Room ${roomId} (${room.name}) - Owner: ${ownerId}, Current User: ${userId}, Is Owner: ${ownerId === userId}`);
         });
         
-        const resolvedRooms = await Promise.all(roomsWithCounts);
-        setRooms(resolvedRooms);
+        setRooms(roomsWithCounts);
+        setFetchAttempts(0);
       } else {
         const error = await response.json();
         toast({
@@ -124,6 +148,16 @@ const Rooms: React.FC = () => {
           description: error.message || "Could not fetch rooms. Please try again.",
           variant: "destructive",
         });
+        
+        if (fetchAttempts < 3) {
+          const retryDelay = Math.pow(2, fetchAttempts) * 1000;
+          console.log(`Retrying fetch in ${retryDelay}ms (attempt ${fetchAttempts + 1}/3)`);
+          
+          setTimeout(() => {
+            setFetchAttempts(prev => prev + 1);
+            fetchRooms();
+          }, retryDelay);
+        }
       }
     } catch (error) {
       console.error("Failed to fetch rooms:", error);
@@ -141,57 +175,49 @@ const Rooms: React.FC = () => {
     if (isAuthenticated && !isLoading) {
       const refreshInterval = setInterval(() => {
         fetchRooms();
-      }, 60000);
+      }, 30000);
       
       return () => clearInterval(refreshInterval);
     }
   }, [isAuthenticated, isLoading]);
 
-  const isRoomCreator = (room: Room) => {
-    if (!user) {
-      console.log('No user data available');
-      return false;
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isAuthenticated) {
+        console.log('Tab became visible, refreshing rooms');
+        fetchRooms();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    if (isAuthenticated && token) {
+      fetchRooms();
     }
     
-    if (!room) {
-      console.log('No room data available');
-      return false;
-    }
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isAuthenticated, token]);
+
+  const isRoomCreator = (room: Room) => {
+    if (!user || !room) return false;
     
     let ownerId = '';
-   
     
     if (room.owner) {
       if (typeof room.owner === 'string') {
         ownerId = room.owner;
       } else {
         ownerId = room.owner._id || room.owner.id || '';
-      
       }
     }
     
-    if (!ownerId) {
-      console.log('No owner data available for room:', room.name);
-      return false;
-    }
+    if (!ownerId) return false;
     
     const userId = user.id || user._id || '';
-    const userEmail = user.email || '';
     
-    const isMatchById = userId && ownerId && userId.toString() === ownerId.toString();
-    // const isMatchByEmail = userEmail && ownerEmail && userEmail.toString() === ownerEmail.toString();
-    
-    console.log('Room ownership check:', {
-      roomName: room.name,
-      userId,
-      ownerId,
-     
-      isMatchById,
-      
-      isMatch: isMatchById
-    });
-    
-    return isMatchById;
+    return userId.toString() === ownerId.toString();
   };
 
   const handleDeleteRoom = async () => {
@@ -400,6 +426,9 @@ const Rooms: React.FC = () => {
                         <div className="flex justify-between items-start gap-2">
                           <CardTitle className="text-lg flex items-center gap-2 flex-1">
                             <span className="truncate">{room.name}</span>
+                            {room.isPrivate && (
+                              <Lock size={16} className="text-amber-500" aria-label="Private Room" />
+                            )}
                           </CardTitle>
                           <div className="flex items-center gap-2 shrink-0">
                             {isCreator && (
@@ -416,7 +445,7 @@ const Rooms: React.FC = () => {
                                     e.preventDefault();
                                     setRoomToDelete(room);
                                   }}
-                                  title="Delete this room"
+                                  aria-label="Delete this room"
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
