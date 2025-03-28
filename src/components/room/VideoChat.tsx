@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -39,6 +40,16 @@ const iceServers = [
   { urls: 'stun:stun.2talk.com:3478' },
   { urls: 'stun:stun.3clogic.com:3478' },
   { urls: 'stun:stun.3cx.com:3478' },
+  { urls: 'stun:stun.callwithus.com:3478' },
+  { urls: 'stun:stun.counterpath.com:3478' },
+  { urls: 'stun:stun.counterpath.net:3478' },
+  { urls: 'stun:stun.cryptonit.net:3478' },
+  { urls: 'stun:stun.dish.com:3478' },
+  { urls: 'stun:stun.fathomvoice.com:3478' },
+  { urls: 'stun:stun.gmx.de:3478' },
+  { urls: 'stun:stun.gmx.net:3478' },
+  { urls: 'stun:stun.ipfire.org:3478' },
+  { urls: 'stun:stun.ippi.fr:3478' },
   
   // TURN servers - critical for NAT traversal when STUN fails
   { 
@@ -75,6 +86,16 @@ const iceServers = [
     urls: 'turn:relay.metered.ca:443?transport=tcp',
     username: 'ba6a513cc3f4d431a554',
     credential: 'y+r3nHXLyGGg4Kyk'
+  },
+  {
+    urls: 'turn:turn.anyfirewall.com:443?transport=tcp',
+    username: 'webrtc',
+    credential: 'webrtc'
+  },
+  {
+    urls: 'turn:turn.anyfirewall.com:443',
+    username: 'webrtc',
+    credential: 'webrtc'
   }
 ];
 
@@ -93,8 +114,18 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
   const [iceCandidatesBuffer, setIceCandidatesBuffer] = useState<Map<string, RTCIceCandidate[]>>(new Map());
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRefs = useRef<Map<string, HTMLVideoElement | null>>(new Map());
+  const connectionTimeouts = useRef<Map<string, NodeJS.Timeout>>(new Map());
   
-  // Get user media for video/audio with better error handling
+  // Clear any timeouts when component unmounts
+  useEffect(() => {
+    return () => {
+      connectionTimeouts.current.forEach((timeout) => {
+        clearTimeout(timeout);
+      });
+    };
+  }, []);
+  
+  // Get user media for video/audio with better error handling - improved for faster connection
   useEffect(() => {
     const getMedia = async () => {
       try {
@@ -103,16 +134,15 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
         // First attempt with both video and audio and optimized constraints for faster connection
         const stream = await navigator.mediaDevices.getUserMedia({ 
           video: {
-            width: { ideal: 640 },
-            height: { ideal: 480 },
+            width: { ideal: 320 }, // Lower resolution for faster initial connect
+            height: { ideal: 240 },
             facingMode: "user",
-            frameRate: { ideal: 20, max: 30 }
+            frameRate: { ideal: 15, max: 24 } // Lower framerate for faster initial connect
           }, 
           audio: {
             echoCancellation: true,
             noiseSuppression: true,
-            autoGainControl: true,
-            sampleRate: { ideal: 48000 }
+            autoGainControl: true
           } 
         });
         
@@ -129,10 +159,10 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
             userId: user?.id || user?._id
           });
           
-          // Force reconnect to peers after getting media
+          // Force reconnect to peers after getting media - reduced timeout for faster connection
           setTimeout(() => {
             retryConnections();
-          }, 500);
+          }, 300);
         }
         
       } catch (error) {
@@ -166,10 +196,10 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
               userId: user?.id || user?._id
             });
             
-            // Force reconnect to peers after getting media
+            // Force reconnect to peers after getting media - faster
             setTimeout(() => {
               retryConnections();
-            }, 500);
+            }, 300);
           }
         } catch (audioError) {
           console.error("Error accessing audio devices:", audioError);
@@ -209,7 +239,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
     };
   }, [roomId, socket, user?.id, user?._id]);
   
-  // Setup WebRTC peer connections when users join
+  // Setup WebRTC peer connections when users join - improved for faster connections
   useEffect(() => {
     if (!socket || !localStream || !user) return;
     
@@ -427,6 +457,12 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
           const newBuffer = new Map(iceCandidatesBuffer);
           newBuffer.delete(remoteUserId);
           setIceCandidatesBuffer(newBuffer);
+          
+          // Clear any connection timeout for this user
+          if (connectionTimeouts.current.has(remoteUserId)) {
+            clearTimeout(connectionTimeouts.current.get(remoteUserId)!);
+            connectionTimeouts.current.delete(remoteUserId);
+          }
         }
       }
     };
@@ -458,7 +494,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
             console.log(`Creating new peer connection with ${data.userId} after stream ready`);
             createPeerConnection(data.userId);
           }
-        }, 1000);
+        }, 300); // Reduced timeout for faster connection
       }
     };
     
@@ -475,7 +511,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
       }
       
       // Create a new connection
-      setTimeout(() => createPeerConnection(data.sender), 500);
+      setTimeout(() => createPeerConnection(data.sender), 200); // Faster reconnect
     };
     
     // Handle reconnect peers request
@@ -512,7 +548,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
               })
               .catch(err => console.error('Error creating offer after reconnect:', err));
           }
-        }, 1000);
+        }, 200); // Faster reconnect
       }
     };
     
@@ -539,7 +575,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
     };
   }, [socket, localStream, activeUsers, user, peerConnections, remoteStreams, iceCandidatesBuffer, roomId]);
   
-  // Function to create a peer connection for a specific user with improved reliability
+  // Function to create a peer connection for a specific user with improved reliability and speed
   const createPeerConnection = (remoteUserId: string) => {
     if (!socket || !localStream || !user) return null;
     
@@ -605,6 +641,12 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
             });
           });
         }
+        
+        // Clear the connection timeout for this user
+        if (connectionTimeouts.current.has(remoteUserId)) {
+          clearTimeout(connectionTimeouts.current.get(remoteUserId)!);
+          connectionTimeouts.current.delete(remoteUserId);
+        }
       }
     };
     
@@ -633,8 +675,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
         pc.createOffer({ 
           offerToReceiveAudio: true, 
           offerToReceiveVideo: true,
-          iceRestart: true,
-          voiceActivityDetection: true
+          iceRestart: true
         })
           .then(offer => {
             console.log(`Created offer for ${remoteUserId}:`, offer);
@@ -670,7 +711,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
       if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
         console.log(`Connection ${pc.iceConnectionState} with ${remoteUserId}, attempting retry...`);
         
-        // Give it a moment before retrying
+        // Give it a moment before retrying - faster retry
         setTimeout(() => {
           if (socket && socket.connected) {
             socket.emit('retryConnection', {
@@ -678,7 +719,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
               roomId
             });
           }
-        }, 500);
+        }, 300);
       }
     };
     
@@ -702,7 +743,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
               roomId
             });
           }
-        }, 1000);
+        }, 500);
       }
     };
     
@@ -717,8 +758,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
       pc.createOffer({ 
         offerToReceiveAudio: true, 
         offerToReceiveVideo: true,
-        iceRestart: true,
-        voiceActivityDetection: true
+        iceRestart: true
       })
         .then(offer => {
           console.log(`Created offer for ${remoteUserId}:`, offer);
@@ -744,6 +784,25 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
           });
         });
     }
+    
+    // Set a timeout to detect if connection is taking too long
+    const connectionTimeout = setTimeout(() => {
+      // Check if we're still not connected after the timeout
+      const status = connectionStatus.get(remoteUserId);
+      if (status !== 'connected' && status !== 'completed') {
+        console.log(`Connection timeout for ${remoteUserId}, attempting retry`);
+        
+        // Try retrying the connection
+        if (socket && socket.connected) {
+          socket.emit('retryConnection', {
+            targetId: remoteUserId,
+            roomId
+          });
+        }
+      }
+    }, 8000); // 8 seconds timeout
+    
+    connectionTimeouts.current.set(remoteUserId, connectionTimeout);
     
     // Store the peer connection
     setPeerConnections(prev => {
@@ -842,7 +901,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
             createPeerConnection(activeUser.id);
           }
         });
-      }, 1000);
+      }, 300); // Faster reconnect
     }
     
     toast({
