@@ -22,11 +22,12 @@ const corsOptions = {
   origin: ['https://chat-code-eta.vercel.app', 'http://localhost:5173'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control'], // Add "Cache-Control"
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'Pragma', 'Expires'], 
   exposedHeaders: ['Authorization'],
   preflightContinue: false,
   optionsSuccessStatus: 204
 };
+
 
 // Apply CORS middleware
 app.use(cors(corsOptions));
