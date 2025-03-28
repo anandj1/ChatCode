@@ -15,13 +15,16 @@ interface VideoChatProps {
   activeUsers: any[];
 }
 
-// Comprehensive list of STUN/TURN servers for better connectivity
+// Enhanced list of STUN/TURN servers for better connectivity
 const iceServers = [
+  // Google STUN servers
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
   { urls: 'stun:stun2.l.google.com:19302' },
   { urls: 'stun:stun3.l.google.com:19302' },
   { urls: 'stun:stun4.l.google.com:19302' },
+  
+  // Additional public STUN servers for redundancy and faster connections
   { urls: 'stun:stun.ekiga.net' },
   { urls: 'stun:stun.ideasip.com' },
   { urls: 'stun:stun.schlund.de' },
@@ -29,7 +32,15 @@ const iceServers = [
   { urls: 'stun:stun.voiparound.com' },
   { urls: 'stun:stun.voipbuster.com' },
   { urls: 'stun:stun.voipstunt.com' },
-  // Public TURN servers - these are critical for NAT traversal
+  { urls: 'stun:stun.voxgratia.org' },
+  { urls: 'stun:stun.xten.com' },
+  { urls: 'stun:stun.1und1.de:3478' },
+  { urls: 'stun:stun.2talk.co.nz:3478' },
+  { urls: 'stun:stun.2talk.com:3478' },
+  { urls: 'stun:stun.3clogic.com:3478' },
+  { urls: 'stun:stun.3cx.com:3478' },
+  
+  // TURN servers - critical for NAT traversal when STUN fails
   { 
     urls: 'turn:openrelay.metered.ca:80', 
     username: 'openrelayproject', 
@@ -45,7 +56,11 @@ const iceServers = [
     username: 'openrelayproject', 
     credential: 'openrelayproject'
   },
-  // Adding Google's TURN servers as fallback
+  { 
+    urls: 'turn:numb.viagenie.ca',
+    username: 'webrtc@live.com',
+    credential: 'muazkh'
+  },
   {
     urls: 'turn:relay.metered.ca:80',
     username: 'ba6a513cc3f4d431a554',
@@ -53,6 +68,11 @@ const iceServers = [
   },
   {
     urls: 'turn:relay.metered.ca:443',
+    username: 'ba6a513cc3f4d431a554',
+    credential: 'y+r3nHXLyGGg4Kyk'
+  },
+  {
+    urls: 'turn:relay.metered.ca:443?transport=tcp',
     username: 'ba6a513cc3f4d431a554',
     credential: 'y+r3nHXLyGGg4Kyk'
   }
@@ -80,17 +100,19 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
       try {
         console.log('Requesting user media (camera & microphone)');
         
-        // First attempt with both video and audio
+        // First attempt with both video and audio and optimized constraints for faster connection
         const stream = await navigator.mediaDevices.getUserMedia({ 
           video: {
             width: { ideal: 640 },
             height: { ideal: 480 },
-            facingMode: "user"
+            facingMode: "user",
+            frameRate: { ideal: 20, max: 30 }
           }, 
           audio: {
             echoCancellation: true,
             noiseSuppression: true,
-            autoGainControl: true
+            autoGainControl: true,
+            sampleRate: { ideal: 48000 }
           } 
         });
         
@@ -110,7 +132,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
           // Force reconnect to peers after getting media
           setTimeout(() => {
             retryConnections();
-          }, 1000);
+          }, 500);
         }
         
       } catch (error) {
@@ -147,7 +169,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
             // Force reconnect to peers after getting media
             setTimeout(() => {
               retryConnections();
-            }, 1000);
+            }, 500);
           }
         } catch (audioError) {
           console.error("Error accessing audio devices:", audioError);
@@ -535,6 +557,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
       iceCandidatePoolSize: 10,
       bundlePolicy: 'max-bundle',
       rtcpMuxPolicy: 'require',
+      iceTransportPolicy: 'all',
     });
     
     // Add our local stream to the connection
@@ -607,10 +630,19 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
       // Only the peer with the "lower" ID creates the offer (to avoid collision)
       if (socket && socket.id < remoteUserId) {
         console.log(`Creating offer to ${remoteUserId} after negotiation needed`);
-        pc.createOffer()
-          .then(offer => pc.setLocalDescription(offer))
+        pc.createOffer({ 
+          offerToReceiveAudio: true, 
+          offerToReceiveVideo: true,
+          iceRestart: true,
+          voiceActivityDetection: true
+        })
+          .then(offer => {
+            console.log(`Created offer for ${remoteUserId}:`, offer);
+            return pc.setLocalDescription(offer);
+          })
           .then(() => {
             if (socket && pc.localDescription) {
+              console.log(`Sending offer to ${remoteUserId}`);
               socket.emit('offer', {
                 sender: socket.id,
                 target: remoteUserId,
@@ -619,7 +651,9 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
               });
             }
           })
-          .catch(err => console.error('Error creating offer after negotiation needed:', err));
+          .catch(err => {
+            console.error('Error creating offer after negotiation needed:', err);
+          });
       }
     };
     
@@ -644,7 +678,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
               roomId
             });
           }
-        }, 1000);
+        }, 500);
       }
     };
     
@@ -668,7 +702,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
               roomId
             });
           }
-        }, 2000);
+        }, 1000);
       }
     };
     
@@ -677,15 +711,14 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
     };
     
     // Create an offer if we're the one connecting
-    // Use socket.id for comparisons since it's more reliable for the same session
     if (socket && socket.id < remoteUserId) {
       console.log(`User ${socket.id} initiating connection to ${remoteUserId}`);
       
       pc.createOffer({ 
         offerToReceiveAudio: true, 
         offerToReceiveVideo: true,
-        // @ts-ignore - This is a non-standard option but can help with Firefox
-        iceRestart: true 
+        iceRestart: true,
+        voiceActivityDetection: true
       })
         .then(offer => {
           console.log(`Created offer for ${remoteUserId}:`, offer);
