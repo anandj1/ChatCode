@@ -100,6 +100,7 @@ const handleSocketConnection = (io, socket) => {
 
       // If room has a password and user is not already authorized
       if (room.isPrivate && room.password && !isOwner && !isSharedWith && !isParticipant) {
+        // Owner and shared users bypass password check completely
         // Check if provided password matches room password
         if (!password) {
           console.log(`Password required but not provided for room ${roomId}`);
