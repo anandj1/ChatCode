@@ -91,15 +91,15 @@ const handleSocketConnection = (io, socket) => {
       
       // Check authorization for private/password-protected rooms
       const isOwner = room.owner.toString() === userId.toString();
-      const isSharedWith = room.sharedWith.some(share => 
-        share.user && share.user._id.toString() === userId.toString()
+      const isSharedWith = room.sharedWith && room.sharedWith.some(share => 
+        share.user && share.user._id && share.user._id.toString() === userId.toString()
       );
-      const isParticipant = room.participants.some(p => 
-        p.user && p.user._id.toString() === userId.toString()
+      const isParticipant = room.participants && room.participants.some(p => 
+        p.user && p.user._id && p.user._id.toString() === userId.toString()
       );
 
       // If room has a password and user is not already authorized
-      if (room.password && !isOwner && !isSharedWith && !isParticipant) {
+      if (room.isPrivate && room.password && !isOwner && !isSharedWith && !isParticipant) {
         // Check if provided password matches room password
         if (!password) {
           console.log(`Password required but not provided for room ${roomId}`);
@@ -120,7 +120,7 @@ const handleSocketConnection = (io, socket) => {
         }
         
         console.log(`Password validated successfully for room ${roomId}`);
-        // At this point, password is correct - continue with join process
+        // Password is correct - continue with join process
       }
 
       // Add user to the room
@@ -153,12 +153,14 @@ const handleSocketConnection = (io, socket) => {
         
         if (!activeUsers.has(roomId)) {
           activeUsers.set(roomId, []);
-        } else {
-          const existingUsers = activeUsers.get(roomId);
-          const filteredUsers = existingUsers.filter(u => u.id.toString() !== userId.toString());
-          activeUsers.set(roomId, filteredUsers);
         }
         
+        // Filter out any existing entries for this user
+        const existingUsers = activeUsers.get(roomId);
+        const filteredUsers = existingUsers.filter(u => u.id.toString() !== userId.toString());
+        activeUsers.set(roomId, filteredUsers);
+        
+        // Add the user with their new socket id
         activeUsers.get(roomId).push(userData);
         const uniqueActiveUsers = getUniqueActiveUsers(roomId);
         
@@ -250,6 +252,29 @@ const handleSocketConnection = (io, socket) => {
     }
   });
   
+  // Handle reconnection requests
+  socket.on('requestReconnect', ({ roomId }) => {
+    if (roomId) {
+      console.log(`Reconnection requested for room ${roomId} by ${socket.id}`);
+      const uniqueActiveUsers = getUniqueActiveUsers(roomId);
+      
+      // Broadcast to all users in the room that this user wants to reconnect
+      io.to(roomId).emit('reconnectPeers', {
+        fromSocketId: socket.id,
+        users: uniqueActiveUsers,
+        roomId
+      });
+    }
+  });
+  
+  // Handle WebRTC stream ready event
+  socket.on('streamReady', ({ roomId, userId }) => {
+    if (roomId) {
+      console.log(`User ${userId} stream is ready in room ${roomId}`);
+      io.to(roomId).emit('streamReady', { userId, socketId: socket.id });
+    }
+  });
+  
   // Handle room leaving
   socket.on('leaveRoom', async ({ roomId, userId }) => {
     try {
@@ -336,6 +361,29 @@ const handleSocketConnection = (io, socket) => {
     }
   });
   
+  // Toggle audio/video status
+  socket.on('toggleAudio', ({ roomId, userId, enabled }) => {
+    if (roomId) {
+      console.log(`User ${userId} toggled audio: ${enabled ? 'on' : 'off'}`);
+      socket.to(roomId).emit('peerToggleAudio', {
+        userId,
+        enabled,
+        socketId: socket.id
+      });
+    }
+  });
+  
+  socket.on('toggleVideo', ({ roomId, userId, enabled }) => {
+    if (roomId) {
+      console.log(`User ${userId} toggled video: ${enabled ? 'on' : 'off'}`);
+      socket.to(roomId).emit('peerToggleVideo', {
+        userId,
+        enabled,
+        socketId: socket.id
+      });
+    }
+  });
+  
   // Handle disconnections with improved cleanup
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
@@ -376,6 +424,5 @@ const handleSocketConnection = (io, socket) => {
     }
   });
 };
-
 
 module.exports = { handleSocketConnection };
