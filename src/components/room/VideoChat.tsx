@@ -1012,7 +1012,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
                     
                     el.play().catch(e => {
                       console.error("Autoplay failed:", e);
-                      el.muted = true;
+                    
                       el.play().then(() => {
                         const unmute = () => {
                           el.muted = false;
