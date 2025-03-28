@@ -1,4 +1,3 @@
-
 const express = require('express');
 const router = express.Router();
 const Room = require('../models/Room');
@@ -6,29 +5,72 @@ const User = require('../models/User');
 const Message = require('../models/Message');
 const { authenticateToken } = require('../middleware/auth');
 
-// Delete a room - only by creator
-
+// Get rooms - fixed to properly include private rooms the user has access to
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    // Get rooms that are either public or owned by the user or shared with the user
+    // Ensure req.user exists and has an id property
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ message: 'User not authenticated properly' });
+    }
+
+    const userId = req.user.id;
+    console.log(`Fetching rooms for user: ${userId}`);
+    
+    // Get rooms that are either:
+    // 1. Public rooms
+    // 2. Private rooms owned by the user
+    // 3. Private rooms shared with the user
+    // 4. Rooms where user is a participant
     const rooms = await Room.find({
       $or: [
         { isPrivate: false },
-        { owner: req.user._id }, // Use _id consistently
-        { 'sharedWith.user': req.user._id }
+        { owner: userId },
+        { 'sharedWith.user': userId },
+        { 'participants.user': userId }
       ]
     })
-    // .populate('owner', '_id username email avatar') // Include _id in population
+    .populate('owner', 'username avatar')
     .populate('participants.user', 'username avatar')
     .sort({ lastActivity: -1 });
     
-    res.json(rooms);
+    // Enhanced logging for debugging room visibility
+    rooms.forEach(room => {
+      const isOwner = room.owner._id.toString() === userId.toString();
+      const isPrivate = room.isPrivate;
+      console.log(`Room: ${room.name}, ID: ${room._id}, Owner: ${room.owner._id}, IsOwner: ${isOwner}, IsPrivate: ${isPrivate}, CreatedBy: ${room.owner.username}`);
+    });
+    
+    console.log(`Found ${rooms.length} rooms for user ${userId}`);
+    
+    // Additional check to ensure private rooms owned by the user are included
+    const privateOwnedRooms = await Room.find({
+      owner: userId,
+      isPrivate: true
+    }).populate('owner', 'username avatar')
+      .populate('participants.user', 'username avatar');
+    
+    // Combine and deduplicate rooms
+    const allRooms = [...rooms];
+    privateOwnedRooms.forEach(privateRoom => {
+      if (!allRooms.some(room => room._id.toString() === privateRoom._id.toString())) {
+        allRooms.push(privateRoom);
+      }
+    });
+    
+    // Sort by last activity
+    allRooms.sort((a, b) => {
+      return new Date(b.lastActivity || b.createdAt).getTime() - 
+             new Date(a.lastActivity || a.createdAt).getTime();
+    });
+    
+    res.json(allRooms);
   } catch (error) {
     console.error('Get rooms error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
+// Delete a room - only by creator
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     // First find the room to verify ownership
@@ -36,6 +78,11 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     
     if (!room) {
       return res.status(404).json({ message: 'Room not found' });
+    }
+    
+    // Ensure req.user exists and has an id property
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ message: 'User not authenticated properly' });
     }
     
     // Convert IDs to strings for comparison
@@ -66,9 +113,6 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Get all rooms - modified to handle private rooms
-
-
 // Get public rooms (for unauthenticated users)
 router.get('/public', async (req, res) => {
   try {
@@ -89,6 +133,11 @@ router.post('/', authenticateToken, async (req, res) => {
   try {
     const { name, language, isPrivate, password } = req.body;
     
+    // Ensure req.user exists and has an id property
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ message: 'User not authenticated properly' });
+    }
+    
     console.log("Creating room with user ID:", req.user.id);
     
     const room = new Room({
@@ -97,7 +146,8 @@ router.post('/', authenticateToken, async (req, res) => {
       language: language || 'javascript',
       isPrivate: isPrivate || false,
       password: password || null,
-      participants: [{ user: req.user.id }]
+      participants: [{ user: req.user.id }],
+      lastActivity: new Date()
     });
     
     await room.save();
@@ -108,6 +158,10 @@ router.post('/', authenticateToken, async (req, res) => {
       { $addToSet: { createdRooms: room._id } }
     );
     
+    // Populate the room data before sending response
+    await room.populate('owner', 'username avatar');
+    await room.populate('participants.user', 'username avatar');
+    
     res.status(201).json(room);
   } catch (error) {
     console.error('Create room error:', error);
@@ -115,9 +169,17 @@ router.post('/', authenticateToken, async (req, res) => {
   }
 });
 
-// Get a single room - updated for private room access check
+// Get a single room - updated for private room access check with improved handling
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
+    // Ensure req.user exists and has an id property
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ message: 'User not authenticated properly' });
+    }
+
+    const userId = req.user.id.toString();
+    console.log(`User ${userId} requesting access to room ${req.params.id}`);
+    
     const room = await Room.findById(req.params.id)
       .populate('owner', 'username avatar')
       .populate('participants.user', 'username avatar')
@@ -129,11 +191,26 @@ router.get('/:id', authenticateToken, async (req, res) => {
     
     // If room is private, verify user has access
     if (room.isPrivate) {
-      const userId = req.user.id.toString();
       const isOwner = room.owner._id.toString() === userId;
-      const isSharedWith = room.sharedWith.some(share => share.user._id.toString() === userId);
       
-      if (!isOwner && !isSharedWith) {
+      // Check if user is already a participant in this room
+      const isParticipant = room.participants.some(p => 
+        p.user && (
+          (p.user._id && p.user._id.toString() === userId) || 
+          (typeof p.user === 'string' && p.user === userId)
+        )
+      );
+      
+      const isSharedWith = room.sharedWith.some(share => 
+        share.user && (
+          (share.user._id && share.user._id.toString() === userId) || 
+          (typeof share.user === 'string' && share.user === userId)
+        )
+      );
+      
+      console.log(`Room access check - User: ${userId}, IsOwner: ${isOwner}, IsParticipant: ${isParticipant}, IsSharedWith: ${isSharedWith}`);
+      
+      if (!isOwner && !isSharedWith && !isParticipant) {
         // Check if room has a password
         if (room.password) {
           return res.status(403).json({ 
@@ -153,47 +230,61 @@ router.get('/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Join a room - updated for private room access check
+// Join a room - completely rewritten to properly maintain user as participant
 router.post('/:id/join', authenticateToken, async (req, res) => {
   try {
+    // Ensure req.user exists and has an id property
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ message: 'User not authenticated properly' });
+    }
+
+    const userId = req.user.id.toString();
+    console.log(`User ${userId} attempting to join room ${req.params.id}`);
+    
     const room = await Room.findById(req.params.id);
     
     if (!room) {
       return res.status(404).json({ message: 'Room not found' });
     }
     
-    const userId = req.user.id.toString();
-    
-    // Check if room is private
-    if (room.isPrivate) {
+    // Check if room is private and password protected
+    if ((room.isPrivate || room.password) && room.password) {
       const isOwner = room.owner.toString() === userId;
-      const isSharedWith = room.sharedWith.some(share => share.user.toString() === userId);
+      const isSharedWith = room.sharedWith.some(share => 
+        share.user && (
+          (share.user._id && share.user._id.toString() === userId) || 
+          (typeof share.user === 'string' && share.user === userId)
+        )
+      );
       
+      // If not owner or shared with, check password
       if (!isOwner && !isSharedWith) {
-        // Check for password
         const { password } = req.body;
         
-        if (!password || password !== room.password) {
+        if (!password) {
+          return res.status(401).json({ message: 'Password is required' });
+        }
+        
+        if (password !== room.password) {
+          console.log(`Password mismatch for room ${req.params.id}`);
           return res.status(401).json({ message: 'Invalid room password' });
         }
-      }
-    }
-    
-    // Check if room requires password (for public rooms with password)
-    if (!room.isPrivate && room.password) {
-      const { password } = req.body;
-      
-      if (!password || password !== room.password) {
-        return res.status(401).json({ message: 'Invalid room password' });
+        
+        console.log(`Password matched for room ${req.params.id}`);
       }
     }
     
     // Check if user is already in the room
     const isParticipant = room.participants.some(
-      p => p.user.toString() === userId
+      p => p.user && (
+        (p.user._id && p.user._id.toString() === userId) ||
+        (typeof p.user === 'string' && p.user === userId)
+      )
     );
     
     if (!isParticipant) {
+      // Add user to participants
+      console.log(`Adding user ${userId} to room ${req.params.id} participants`);
       room.participants.push({
         user: userId,
         joinedAt: new Date()
@@ -201,9 +292,19 @@ router.post('/:id/join', authenticateToken, async (req, res) => {
       
       room.lastActivity = new Date();
       await room.save();
+    } else {
+      console.log(`User ${userId} is already a participant in room ${req.params.id}`);
     }
     
-    res.json({ message: 'Joined room successfully', room });
+    // Return the updated room data
+    const populatedRoom = await Room.findById(req.params.id)
+      .populate('owner', 'username avatar')
+      .populate('participants.user', 'username avatar');
+      
+    res.json({ 
+      message: 'Joined room successfully', 
+      room: populatedRoom
+    });
   } catch (error) {
     console.error('Join room error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -213,6 +314,11 @@ router.post('/:id/join', authenticateToken, async (req, res) => {
 // Share a private room with other users
 router.post('/:id/share', authenticateToken, async (req, res) => {
   try {
+    // Ensure req.user exists and has an id property
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ message: 'User not authenticated properly' });
+    }
+
     const { userIds } = req.body;
     
     if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
