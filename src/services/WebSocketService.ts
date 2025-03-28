@@ -152,7 +152,7 @@ class WebSocketService {
     }
   }
 
-  public joinRoom(roomId: string, userId: string) {
+  public joinRoom(roomId: string, userId: string, password?: string) {
     if (!this.socket) {
       console.error("Cannot join room: socket not connected");
       return;
@@ -169,7 +169,7 @@ class WebSocketService {
     }
 
     console.log(`Emitting joinRoom for ${roomId} with user ${userId}`);
-    this.socket.emit('joinRoom', { roomId, userId });
+    this.socket.emit('joinRoom', { roomId, userId, password });
   }
 
   public leaveRoom(roomId: string, userId: string) {
