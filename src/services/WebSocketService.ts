@@ -1,3 +1,4 @@
+
 import { io, Socket } from 'socket.io-client';
 import { buildApiUrl } from '@/api/config';
 
@@ -168,7 +169,7 @@ class WebSocketService {
       return;
     }
 
-    console.log(`Emitting joinRoom for ${roomId} with user ${userId}`);
+    console.log(`Emitting joinRoom for ${roomId} with user ${userId}${password ? ' and password' : ''}`);
     this.socket.emit('joinRoom', { roomId, userId, password });
   }
 
