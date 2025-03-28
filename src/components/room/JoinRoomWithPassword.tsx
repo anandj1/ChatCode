@@ -65,6 +65,7 @@ const JoinRoomWithPassword: React.FC<JoinRoomWithPasswordProps> = ({
     }
 
     if (!navigationTriggered) {
+      console.log(`Attempting to join room ${roomId} with password`);
       joinRoom(roomId, password);
     }
   };
