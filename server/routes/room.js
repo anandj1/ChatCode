@@ -37,10 +37,8 @@ router.get('/', authenticateToken, async (req, res) => {
     rooms.forEach(room => {
       const isOwner = room.owner._id.toString() === userId.toString();
       const isPrivate = room.isPrivate;
-      console.log(`Room: ${room.name}, ID: ${room._id}, Owner: ${room.owner._id}, IsOwner: ${isOwner}, IsPrivate: ${isPrivate}, CreatedBy: ${room.owner.username}`);
     });
     
-    console.log(`Found ${rooms.length} rooms for user ${userId}`);
     
     // Additional check to ensure private rooms owned by the user are included
     const privateOwnedRooms = await Room.find({
@@ -178,7 +176,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
     }
 
     const userId = req.user.id.toString();
-    console.log(`User ${userId} requesting access to room ${req.params.id}`);
+    
     
     const room = await Room.findById(req.params.id)
       .populate('owner', 'username avatar')
@@ -208,7 +206,6 @@ router.get('/:id', authenticateToken, async (req, res) => {
         )
       );
       
-      console.log(`Room access check - User: ${userId}, IsOwner: ${isOwner}, IsParticipant: ${isParticipant}, IsSharedWith: ${isSharedWith}`);
       
       if (!isOwner && !isSharedWith && !isParticipant) {
         // Check if room has a password
@@ -239,7 +236,6 @@ router.post('/:id/join', authenticateToken, async (req, res) => {
     }
 
     const userId = req.user.id.toString();
-    console.log(`User ${userId} attempting to join room ${req.params.id}`);
     
     const room = await Room.findById(req.params.id);
     
@@ -266,11 +262,9 @@ router.post('/:id/join', authenticateToken, async (req, res) => {
         }
         
         if (password !== room.password) {
-          console.log(`Password mismatch for room ${req.params.id}`);
           return res.status(401).json({ message: 'Invalid room password' });
         }
         
-        console.log(`Password matched for room ${req.params.id}`);
       }
     }
     

@@ -78,7 +78,7 @@ const JoinRoomWithPassword: React.FC<JoinRoomWithPasswordProps> = ({
 
       <form onSubmit={handleJoinRoom}>
         <div className="mb-4">
-          <label className="block text-sm font-medium mb-1.5 flex items-center gap-1.5" htmlFor="room-password">
+          <label className="block text-sm font-medium mb-1.5 items-center gap-1.5" htmlFor="room-password">
             <Lock className="h-4 w-4" />
             Room Password
           </label>

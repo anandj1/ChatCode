@@ -1,4 +1,3 @@
-
 const Message = require('./models/Message');
 const Room = require('./models/Room');
 const User = require('./models/User');
@@ -30,91 +29,163 @@ const updateParticipantCount = (io, roomId) => {
   
   console.log(`Broadcasting updated participant count for room ${roomId}: ${count}`);
   io.to(roomId).emit('participantCountUpdate', { count });
+  io.to(roomId).emit('activeUsers', uniqueUsers);
+};
+
+// Debounced function to save code to database - Silent, no notifications
+let saveTimeouts = new Map();
+const saveCodeToDatabase = (roomId, code, language) => {
+  // Clear any existing timeout for this room
+  if (saveTimeouts.has(roomId)) {
+    clearTimeout(saveTimeouts.get(roomId));
+  }
+  
+  // Create a new timeout to save code after 300ms of inactivity (reduced for lower latency)
+  const timeoutId = setTimeout(async () => {
+    try {
+      console.log(`Saving code to database for room ${roomId}`);
+      await Room.findByIdAndUpdate(roomId, {
+        code,
+        language,
+        lastActivity: new Date()
+      });
+      
+      saveTimeouts.delete(roomId);
+      
+    } catch (error) {
+      console.error('Error saving code to database:', error);
+    }
+  }, 300);
+  
+  saveTimeouts.set(roomId, timeoutId);
 };
 
 // Handle WebSocket connections
 const handleSocketConnection = (io, socket) => {
   console.log('New client connected:', socket.id);
   
+  // Keep socket alive with ping/pong
+  socket.on('ping', () => {
+    socket.emit('pong');
+  });
+  
   // Join a room
   socket.on('joinRoom', async ({ roomId, userId }) => {
     try {
+      if (!roomId || !userId) {
+        console.error('Invalid joinRoom data. roomId and userId are required');
+        socket.emit('error', { message: 'Invalid room or user data' });
+        return;
+      }
+
       // Add user to the room
       socket.join(roomId);
       console.log(`User ${userId} (socket ${socket.id}) joined room ${roomId}`);
       
-      if (userId) {
-        // Store user info in the activeUsers map
-        const user = await User.findById(userId).select('username avatar firstName displayName createdRooms');
+      // Store user info in the activeUsers map
+      const user = await User.findById(userId).select('username avatar firstName displayName createdRooms');
+      
+      if (user) {
+        // Find the room in the database
+        const room = await Room.findById(roomId);
         
-        if (user) {
-          // Check if room requires password and user is not the owner
-          const room = await Room.findById(roomId);
+        if (!room) {
+          socket.emit('error', { message: 'Room not found' });
+          return;
+        }
+        
+        // Check if room requires password and user is not authorized
+        if (room.password && room.isPrivate) {
+          const isOwner = room.owner.toString() === userId.toString();
+          const isSharedWith = room.sharedWith && room.sharedWith.some(share => 
+            share.user && (
+              (share.user._id && share.user._id.toString() === userId.toString()) ||
+              (typeof share.user === 'string' && share.user === userId.toString())
+            )
+          );
+          const isParticipant = room.participants && room.participants.some(p => 
+            p.user && (
+              (p.user._id && p.user._id.toString() === userId.toString()) ||
+              (typeof p.user === 'string' && p.user === userId.toString())
+            )
+          );
           
-          if (!room) {
-            socket.emit('error', { message: 'Room not found' });
+          console.log(`Access check - User: ${userId}, IsOwner: ${isOwner}, IsParticipant: ${isParticipant}, IsSharedWith: ${isSharedWith}`);
+          
+          if (!isOwner && !isSharedWith && !isParticipant) {
+            // If user is not authorized, send error and don't add to active users
+            socket.emit('error', { message: 'This room requires a password to join' });
             return;
           }
-          
-          // Check if room requires password and user is not the owner
-          if (room && room.password) {
-            const isOwner = room.owner.toString() === userId.toString();
-            const isSharedWith = room.sharedWith && room.sharedWith.some(share => 
-              share.user && share.user.toString() === userId.toString()
-            );
-            
-            if (!isOwner && !isSharedWith) {
-              // If user is not authorized, send error and don't add to active users
-              socket.emit('error', { message: 'This room requires a password to join' });
-              return;
-            }
-          }
-          
-          const isCreator = room && room.owner.toString() === userId.toString();
-          
-          const userData = {
-            id: user._id,
-            socketId: socket.id,
-            username: user.username,
-            avatar: user.avatar,
-            displayName: user.displayName || '',
-            firstName: user.firstName || '',
-            isCreator: isCreator
-          };
-          
-          console.log(`Adding user ${userData.username} to active users in room ${roomId}`);
-          
-          // If this is the first user for this room, create a new array
-          if (!activeUsers.has(roomId)) {
-            activeUsers.set(roomId, []);
-          } else {
-            // Remove any existing entries for this user (in case they reconnected)
-            const existingUsers = activeUsers.get(roomId);
-            const filteredUsers = existingUsers.filter(u => u.id.toString() !== userId.toString());
-            activeUsers.set(roomId, filteredUsers);
-          }
-          
-          // Add user to the active users for this room
-          activeUsers.get(roomId).push(userData);
-          
-          // Get unique active users
-          const uniqueActiveUsers = getUniqueActiveUsers(roomId);
-          
-          // Notify all clients in the room about the new user
-          io.to(roomId).emit('userJoined', {
-            user: userData,
-            users: uniqueActiveUsers
-          });
-          
-          // Update room activity timestamp
-          await Room.findByIdAndUpdate(roomId, {
-            lastActivity: new Date(),
-            $addToSet: { participants: { user: userId } }
-          });
-          
-          // Update and broadcast participant count
-          updateParticipantCount(io, roomId);
         }
+        
+        // Check if user already exists as a participant in the room database
+        const isExistingParticipant = room.participants.some(
+          p => p.user && (
+            (p.user._id && p.user._id.toString() === userId.toString()) ||
+            (typeof p.user === 'string' && p.user === userId.toString())
+          )
+        );
+        
+        // If not an existing participant, add them now
+        if (!isExistingParticipant) {
+          console.log(`Adding user ${userId} to room ${roomId} participants database`);
+          room.participants.push({
+            user: userId,
+            joinedAt: new Date()
+          });
+          await room.save();
+        }
+        
+        const isCreator = room && room.owner.toString() === userId.toString();
+        
+        const userData = {
+          id: user._id,
+          socketId: socket.id,
+          username: user.username,
+          avatar: user.avatar,
+          displayName: user.displayName || '',
+          firstName: user.firstName || '',
+          isCreator: isCreator
+        };
+        
+        console.log(`Adding user ${userData.username} to active users in room ${roomId}`);
+        
+        // If this is the first user for this room, create a new array
+        if (!activeUsers.has(roomId)) {
+          activeUsers.set(roomId, []);
+        } else {
+          // Remove any existing entries for this user (in case they reconnected)
+          const existingUsers = activeUsers.get(roomId);
+          const filteredUsers = existingUsers.filter(u => u.id.toString() !== userId.toString());
+          activeUsers.set(roomId, filteredUsers);
+        }
+        
+        // Add user to the active users for this room
+        activeUsers.get(roomId).push(userData);
+        
+        // Get unique active users
+        const uniqueActiveUsers = getUniqueActiveUsers(roomId);
+        
+        // Notify all clients in the room about the new user
+        io.to(roomId).emit('userJoined', {
+          user: userData,
+          users: uniqueActiveUsers
+        });
+        
+        // Update room activity timestamp
+        await Room.findByIdAndUpdate(roomId, {
+          lastActivity: new Date()
+        });
+        
+        // Update and broadcast participant count
+        updateParticipantCount(io, roomId);
+        
+        // Broadcast to all clients that a new peer is available for connection
+        socket.to(roomId).emit('newPeer', {
+          peerId: socket.id,
+          userId: userId
+        });
       }
       
       // Get room data
@@ -138,25 +209,17 @@ const handleSocketConnection = (io, socket) => {
       
       socket.emit('previousMessages', messages.reverse());
       
-      // Get unique active users
-      const uniqueActiveUsers = getUniqueActiveUsers(roomId);
-      
       // Send active users to the client
       socket.emit('activeUsers', uniqueActiveUsers);
-      
-      // Update and broadcast participant count
-      updateParticipantCount(io, roomId);
-      
     } catch (error) {
       console.error('Error joining room:', error);
       socket.emit('error', { message: 'Failed to join room: ' + error.message });
     }
   });
   
-  // Handle code updates - synchronize between users
+  // Handle code updates 
   socket.on('codeChange', ({ roomId, code, language }) => {
     // Broadcast code changes to all other clients in the room
-    console.log(`Broadcasting code changes in room ${roomId}`);
     socket.to(roomId).emit('codeUpdate', { code, language });
     
     // Periodically save code to database (rate-limited) - silently
@@ -244,65 +307,95 @@ const handleSocketConnection = (io, socket) => {
     }
   });
   
-  // Handle disconnections
+  // Improved WebRTC signaling for video/audio
+  socket.on('offer', (data) => {
+    if (data.roomId && data.target) {
+      console.log(`Forwarding offer from ${socket.id} to ${data.target} in room ${data.roomId}`);
+      // Send directly to specific target rather than broadcasting to room
+      io.to(data.target).emit('offer', {
+        ...data,
+        sender: socket.id
+      });
+    } else {
+      console.error('Invalid offer data:', data);
+    }
+  });
+  
+  socket.on('answer', (data) => {
+    if (data.roomId && data.target) {
+      console.log(`Forwarding answer from ${socket.id} to ${data.target} in room ${data.roomId}`);
+      // Send directly to specific target rather than broadcasting to room
+      io.to(data.target).emit('answer', {
+        ...data,
+        sender: socket.id
+      });
+    } else {
+      console.error('Invalid answer data:', data);
+    }
+  });
+  
+  socket.on('iceCandidate', (data) => {
+    if (data.roomId && data.target) {
+      console.log(`Forwarding ICE candidate from ${socket.id} to ${data.target} in room ${data.roomId}`);
+      io.to(data.target).emit('iceCandidate', {
+        ...data,
+        sender: socket.id
+      });
+    } else {
+      console.error('Invalid ICE candidate data:', data);
+    }
+  });
+  
+  // Add a retry mechanism for failed connections
+  socket.on('retryConnection', ({targetId, roomId}) => {
+    if (targetId && roomId) {
+      console.log(`Connection retry requested from ${socket.id} to ${targetId} in room ${roomId}`);
+      io.to(targetId).emit('connectionRetry', {
+        sender: socket.id,
+        roomId
+      });
+    }
+  });
+  
+  // Handle disconnections with improved cleanup
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
     
     // Remove disconnected user from all rooms
     for (const [roomId, users] of activeUsers.entries()) {
       const disconnectedUser = users.find(user => user.socketId === socket.id);
-      const updatedUsers = users.filter(user => user.socketId !== socket.id);
       
-      if (updatedUsers.length) {
-        activeUsers.set(roomId, updatedUsers);
+      if (disconnectedUser) {
+        console.log(`User ${disconnectedUser.id} disconnected from room ${roomId}`);
         
-        // Get unique active users after removing the disconnected socket
-        const uniqueActiveUsers = getUniqueActiveUsers(roomId);
+        // Remove just this socket instance
+        const updatedUsers = users.filter(user => user.socketId !== socket.id);
         
-        // Notify all clients in the room about the user disconnecting
-        if (disconnectedUser) {
-          console.log(`User ${disconnectedUser.id} disconnected from room ${roomId}`);
-          io.to(roomId).emit('userLeft', {
-            user: { id: disconnectedUser.id },
-            users: uniqueActiveUsers
-          });
+        if (updatedUsers.length) {
+          activeUsers.set(roomId, updatedUsers);
+          
+          // Get unique active users after removing the disconnected socket
+          const uniqueActiveUsers = getUniqueActiveUsers(roomId);
+          
+          // Check if this user completely disconnected (no other sockets)
+          const userStillActive = uniqueActiveUsers.some(u => u.id.toString() === disconnectedUser.id.toString());
+          
+          if (!userStillActive) {
+            // Notify all clients in the room that this user disconnected
+            io.to(roomId).emit('userLeft', {
+              user: { id: disconnectedUser.id },
+              users: uniqueActiveUsers
+            });
+          }
           
           // Update and broadcast participant count
           updateParticipantCount(io, roomId);
+        } else {
+          activeUsers.delete(roomId);
         }
-      } else {
-        activeUsers.delete(roomId);
       }
     }
   });
-};
-
-// Debounced function to save code to database - Silent, no notifications
-let saveTimeouts = new Map();
-const saveCodeToDatabase = (roomId, code, language) => {
-  // Clear any existing timeout for this room
-  if (saveTimeouts.has(roomId)) {
-    clearTimeout(saveTimeouts.get(roomId));
-  }
-  
-  // Create a new timeout to save code after 3 seconds of inactivity
-  const timeoutId = setTimeout(async () => {
-    try {
-      console.log(`Saving code to database for room ${roomId}`);
-      await Room.findByIdAndUpdate(roomId, {
-        code,
-        language,
-        lastActivity: new Date()
-      });
-      
-      saveTimeouts.delete(roomId);
-      
-    } catch (error) {
-      console.error('Error saving code to database:', error);
-    }
-  }, 3000);
-  
-  saveTimeouts.set(roomId, timeoutId);
 };
 
 module.exports = { handleSocketConnection };
