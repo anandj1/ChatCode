@@ -1,36 +1,23 @@
+import { Types } from 'mongoose';
 
 export interface Room {
-  id: string;
-  _id?: string;
+  _id: Types.ObjectId;
+  owner: Types.ObjectId;
   name: string;
-  language: string;
-  code: string;
+  description?: string;
   isPrivate: boolean;
-  password?: string | null;
-  owner: {
-    id?: string;
-    _id?: string;
-    username: string;
-    avatar?: string;
-  };
+  password?: string;
+  code: string;
+  language: string;
+  createdAt: Date;
+  updatedAt: Date;
   participants: {
-    user: {
-      id?: string;
-      _id?: string;
-      username: string;
-      avatar?: string;
-    };
+    user: Types.ObjectId;
     joinedAt: Date;
   }[];
-  sharedWith?: {
-    user: {
-      id?: string;
-      _id?: string;
-      username: string;
-      avatar?: string;
-    };
+  sharedWith: {
+    user: Types.ObjectId;
     sharedAt: Date;
   }[];
-  createdAt?: Date;
-  lastActivity?: Date;
+  lastActivity: Date;
 }
