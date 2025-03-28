@@ -104,9 +104,7 @@ export const useRoomAccess = ({ onSuccess, onError }: UseRoomAccessProps) => {
       const checkResponse = await fetch(buildApiUrl(`rooms/${roomId}`), {
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache',
-          'Expires': '0'
+         
         },
         signal
       });
