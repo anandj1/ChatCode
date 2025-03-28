@@ -104,13 +104,16 @@ export const useRoomAccess = ({ onSuccess, onError }: UseRoomAccessProps) => {
       const checkResponse = await fetch(buildApiUrl(`rooms/${roomId}`), {
         headers: {
           'Authorization': `Bearer ${token}`,
-         
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+          'Expires': '0'
         },
         signal
       });
       
       console.log(`Room check response status: ${checkResponse.status}`);
       
+      // If room doesn't require password or user already has access
       if (checkResponse.ok) {
         console.log("Room access granted, connecting to websocket");
         
@@ -126,7 +129,7 @@ export const useRoomAccess = ({ onSuccess, onError }: UseRoomAccessProps) => {
             console.log("Socket not connected, waiting to connect");
             socket.once('connect', () => {
               console.log(`Socket connected, now joining room ${roomId}`);
-              wsInstance.joinRoom(roomId, user.id);
+              wsInstance.joinRoom(roomId, user.id, password);
             });
           }
         } else {
@@ -151,10 +154,11 @@ export const useRoomAccess = ({ onSuccess, onError }: UseRoomAccessProps) => {
         return;
       }
       
+      // Handle case where room requires password
       if (checkResponse.status === 403) {
         const errorData = await checkResponse.json();
         
-        if (errorData.passwordRequired) {
+        if (errorData.passwordRequired && !password) {
           const errorMessage = "This room requires a password to join";
           
           toast({
@@ -177,6 +181,7 @@ export const useRoomAccess = ({ onSuccess, onError }: UseRoomAccessProps) => {
         }
       }
       
+      // If we have a password, attempt to join with password
       if (password) {
         console.log(`Attempting to join private room ${roomId} with password`);
         const joinResponse = await fetch(buildApiUrl(`rooms/${roomId}/join`), {
@@ -206,12 +211,12 @@ export const useRoomAccess = ({ onSuccess, onError }: UseRoomAccessProps) => {
           // Ensure socket is connected before attempting to join
           if (socket.connected) {
             console.log(`Joining room ${roomId} with user ${user.id} after password verification`);
-            wsInstance.joinRoom(roomId, user.id);
+            wsInstance.joinRoom(roomId, user.id, password);
           } else {
             console.log("Socket not connected after password verification, waiting to connect");
             socket.once('connect', () => {
               console.log(`Socket connected after password verification, now joining room ${roomId}`);
-              wsInstance.joinRoom(roomId, user.id);
+              wsInstance.joinRoom(roomId, user.id, password);
             });
           }
         }
