@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock, EyeOff, Eye, Loader2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { buildApiUrl } from '@/api/config';
-import { useAuth } from '@/context/AuthContext';
+import { useRoomAccess } from '@/hooks/useRoomAccess';
 import { useToast } from '@/hooks/use-toast';
 
 interface JoinRoomWithPasswordProps {
@@ -19,59 +19,53 @@ const JoinRoomWithPassword: React.FC<JoinRoomWithPasswordProps> = ({
 }) => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [navigationTriggered, setNavigationTriggered] = useState(false);
   const navigate = useNavigate();
-  const { token } = useAuth();
   const { toast } = useToast();
+  
+  const { joinRoom, loading: isLoading, lastJoinedRoom } = useRoomAccess({
+    onSuccess: (roomId, password) => {
+      toast({
+        title: "Success",
+        description: "Joined room successfully",
+        variant: "success",
+      });
+      
+      // Call onSuccess to notify parent component of successful join
+      onSuccess();
+      
+      // Set flag that navigation was triggered to prevent duplicate navigations
+      setNavigationTriggered(true);
+      
+      // Navigate with a delay to ensure proper state updates
+      setTimeout(() => {
+        navigate(`/room/${roomId}`, { replace: true });
+      }, 1000);
+    },
+    onError: (message) => {
+      setError(message);
+    }
+  });
+
+  useEffect(() => {
+    // Clean up navigation flag when component unmounts
+    return () => {
+      setNavigationTriggered(false);
+    };
+  }, []);
 
   const handleJoinRoom = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setError('');
 
     if (!password.trim()) {
       setError('Password is required');
-      setIsLoading(false);
       return;
     }
 
-    try {
-      const response = await fetch(buildApiUrl(`rooms/${roomId}/join`), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ password })
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        toast({
-          title: "Success",
-          description: "Joined room successfully",
-          variant: "success",
-        });
-        // First call onSuccess to update parent component state
-        onSuccess();
-        // Then set a small timeout before navigation to ensure state is updated
-        setTimeout(() => {
-          window.location.reload(); // Force reload to ensure fresh socket connection
-        }, 100);
-      } else {
-        setError(data.message || 'Failed to join room. Please check your password.');
-      }
-    } catch (error) {
-      setError('Connection error. Please try again.');
-      toast({
-        title: "Error",
-        description: "Failed to join room. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
+    if (!navigationTriggered) {
+      joinRoom(roomId, password);
     }
   };
 
@@ -84,7 +78,7 @@ const JoinRoomWithPassword: React.FC<JoinRoomWithPasswordProps> = ({
 
       <form onSubmit={handleJoinRoom}>
         <div className="mb-4">
-          <label className="block text-sm font-medium mb-1.5 items-center gap-1.5" htmlFor="room-password">
+          <label className="block text-sm font-medium mb-1.5 flex items-center gap-1.5" htmlFor="room-password">
             <Lock className="h-4 w-4" />
             Room Password
           </label>
