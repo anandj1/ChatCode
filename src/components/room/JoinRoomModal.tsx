@@ -38,26 +38,32 @@ const JoinRoomModal: React.FC<JoinRoomModalProps> = ({ isOpen, onClose }) => {
     setTimeout(() => {
       navigate(`/room/${roomId}`);
       onClose();
-    }, 1000);
+    }, 500);
+  };
+  
+  // Prevent background click from closing in mobile
+  const handleModalClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
   };
   
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in overflow-auto"
       onClick={onClose}
+      style={{ height: '100vh', alignItems: 'center' }}
     >
       <div 
-        className="bg-gradient-to-br from-background to-secondary/10 rounded-lg shadow-xl w-full max-w-md relative overflow-hidden animate-scale border border-border/50"
-        onClick={(e) => e.stopPropagation()}
+        className="bg-gradient-to-br from-background to-secondary/10 rounded-lg shadow-xl w-full max-w-md relative mx-auto animate-scale border border-border/50"
+        onClick={handleModalClick}
       >
         <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-primary to-primary/70"></div>
         
-        <div className="flex justify-between items-center p-6 border-b border-border/40">
+        <div className="flex justify-between items-center p-4 md:p-6 border-b border-border/40">
           <div className="flex items-center gap-3">
             <div className="flex items-center justify-center w-9 h-9 rounded-md bg-primary/10 text-primary">
               <LogIn size={20} />
             </div>
-            <h2 className="text-xl font-semibold text-foreground">Join a Room</h2>
+            <h2 className="text-lg md:text-xl font-semibold text-foreground">Join a Room</h2>
           </div>
           <button 
             className="text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-secondary/50 p-1"
@@ -68,9 +74,9 @@ const JoinRoomModal: React.FC<JoinRoomModalProps> = ({ isOpen, onClose }) => {
           </button>
         </div>
         
-        <div className="p-6">
+        <div className="p-4 md:p-6">
           <form onSubmit={handleJoinRoom}>
-            <div className="mb-6 space-y-2">
+            <div className="mb-4 md:mb-6 space-y-2">
               <label className="block text-sm font-medium mb-1.5" htmlFor="roomId">
                 Room ID
               </label>
@@ -96,7 +102,10 @@ const JoinRoomModal: React.FC<JoinRoomModalProps> = ({ isOpen, onClose }) => {
               <Button 
                 variant="outline" 
                 type="button"
-                onClick={onClose}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClose();
+                }}
                 className="border-border/60 hover:bg-secondary/30"
               >
                 Cancel
