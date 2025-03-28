@@ -174,7 +174,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
           // Faster timeout for rapid connection
           setTimeout(() => {
             retryConnections();
-          }, 100);
+          }, 50);
         }
         
       } catch (error) {
@@ -213,7 +213,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
             // Faster reconnect for audio-only
             setTimeout(() => {
               retryConnections();
-            }, 100);
+            }, 50);
           }
         } catch (audioError) {
           console.error("Error accessing audio devices:", audioError);
@@ -473,7 +473,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
             console.log(`Creating new peer connection with ${data.userId} after stream ready`);
             createPeerConnection(data.userId);
           }
-        }, 100); // Reduced timeout for faster connection
+        }, 50); // Reduced timeout for faster connection
       }
     };
     
@@ -487,7 +487,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
         setPeerConnections(newPCs);
       }
       
-      setTimeout(() => createPeerConnection(data.sender), 100); // Faster timeout
+      setTimeout(() => createPeerConnection(data.sender), 50); // Faster timeout
     };
     
     const handleReconnectPeers = (data: any) => {
