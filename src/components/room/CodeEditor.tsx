@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
@@ -19,13 +20,12 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ initialCode, language, roomId, 
   const { user } = useAuth();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [cursorPosition, setCursorPosition] = useState({ line: 0, ch: 0 });
-  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Initialize code from initialCode prop
   useEffect(() => {
     if (initialCode && code !== initialCode) {
       setCode(initialCode);
-      console.log("Code initialized from props:", initialCode.substring(0, 50) + "...");
+      console.log("Code initialized from props:", initialCode);
     }
   }, [initialCode]);
   
@@ -36,43 +36,40 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ initialCode, language, roomId, 
     console.log("Setting up code editor socket listeners");
     
     // Listen for code updates from other users
-    const handleCodeUpdate = (data: any) => {
+    socket.on('codeUpdate', (data) => {
       console.log("Received code update from server:", data.code?.substring(0, 50) + "...");
       setCode(data.code);
       setIsSaved(true);
-    };
+    });
     
     // Listen for cursor position updates
-    const handleCursorUpdate = (data: any) => {
+    socket.on('cursorUpdate', (data) => {
       if (data.userId !== user?.id) {
-        setCollaborators(prev => {
-          const existingUserIndex = prev.findIndex(c => c.id === data.userId);
-          if (existingUserIndex !== -1) {
-            // Update existing user
-            const updatedCollaborators = [...prev];
-            updatedCollaborators[existingUserIndex] = {
-              ...updatedCollaborators[existingUserIndex],
-              position: data.position
-            };
-            return updatedCollaborators;
-          } else {
-            // Add new collaborator
-            const colors = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-yellow-500', 'bg-red-500'];
-            const colorIndex = prev.length % colors.length;
-            
-            return [...prev, { 
+        const existingUser = collaborators.find(c => c.id === data.userId);
+        if (existingUser) {
+          setCollaborators(prev => 
+            prev.map(c => c.id === data.userId ? { ...c, position: data.position } : c)
+          );
+        } else {
+          // Add new collaborator if they don't exist
+          const colors = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-yellow-500', 'bg-red-500'];
+          const colorIndex = collaborators.length % colors.length;
+          
+          setCollaborators(prev => [
+            ...prev, 
+            { 
               id: data.userId, 
               name: data.name || 'User', 
               position: data.position,
               color: colors[colorIndex]
-            }];
-          }
-        });
+            }
+          ]);
+        }
       }
-    };
+    });
     
     // Listen for active users to update collaborators
-    const handleActiveUsers = (users: any[]) => {
+    socket.on('activeUsers', (users) => {
       console.log("Active users in code editor:", users);
       if (Array.isArray(users)) {
         const colors = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-yellow-500', 'bg-red-500'];
@@ -91,19 +88,15 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ initialCode, language, roomId, 
         
         setCollaborators(newCollaborators);
       }
-    };
-    
-    socket.on('codeUpdate', handleCodeUpdate);
-    socket.on('cursorUpdate', handleCursorUpdate);
-    socket.on('activeUsers', handleActiveUsers);
+    });
     
     // Clean up listeners on unmount
     return () => {
-      socket.off('codeUpdate', handleCodeUpdate);
-      socket.off('cursorUpdate', handleCursorUpdate);
-      socket.off('activeUsers', handleActiveUsers);
+      socket.off('codeUpdate');
+      socket.off('cursorUpdate');
+      socket.off('activeUsers');
     };
-  }, [socket, user]);
+  }, [socket, user, collaborators]);
   
   // Send code updates to server when code changes
   useEffect(() => {
@@ -111,33 +104,17 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ initialCode, language, roomId, 
     
     setIsSaved(false);
     
-    // Clear any existing timeout
-    if (debounceTimeoutRef.current) {
-      clearTimeout(debounceTimeoutRef.current);
-    }
-    
-    // Set a new debounced timeout
-    debounceTimeoutRef.current = setTimeout(() => {
+    const updateTimeout = setTimeout(() => {
       console.log("Sending code update to server");
-      
-      // Only emit if socket is still connected
-      if (socket.connected) {
-        socket.emit('codeChange', {
-          roomId,
-          code,
-          language
-        });
-        setIsSaved(true);
-      }
-      
-      debounceTimeoutRef.current = null;
-    }, 600); // Reduced debounce time for faster code updates
+      socket.emit('codeChange', {
+        roomId,
+        code,
+        language
+      });
+      setIsSaved(true);
+    }, 1000); // Debounce to avoid too many updates
     
-    return () => {
-      if (debounceTimeoutRef.current) {
-        clearTimeout(debounceTimeoutRef.current);
-      }
-    };
+    return () => clearTimeout(updateTimeout);
   }, [code, socket, roomId, language, initialCode]);
   
   // Track cursor position
@@ -152,15 +129,13 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ initialCode, language, roomId, 
     if (cursorPosition.line !== line || cursorPosition.ch !== ch) {
       setCursorPosition({ line, ch });
       
-      // Send cursor position to server only if socket is connected
-      if (socket.connected) {
-        socket.emit('cursorChange', {
-          roomId,
-          position: { line, ch },
-          userId: user.id,
-          name: user.username || 'User'
-        });
-      }
+      // Send cursor position to server
+      socket.emit('cursorChange', {
+        roomId,
+        position: { line, ch },
+        userId: user.id,
+        name: user.username || 'User'
+      });
     }
   };
   
