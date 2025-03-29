@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -15,24 +16,42 @@ interface VideoChatProps {
   activeUsers: any[];
 }
 
-// Optimized ICE servers for India-to-India and India-to-US connections
+// Optimized and geographically diverse list of STUN/TURN servers for India connections
 const iceServers = [
   // Google STUN servers (globally distributed)
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
   { urls: 'stun:stun2.l.google.com:19302' },
+  { urls: 'stun:stun3.l.google.com:19302' },
+  { urls: 'stun:stun4.l.google.com:19302' },
   
-  // India and Asia regional STUN servers
+  // India regional STUN servers
   { urls: 'stun:stun.sipgate.net' }, // Good connectivity to Asia
   { urls: 'stun:stun.voxgratia.org' },
   { urls: 'stun:stun.services.mozilla.com' },
-  { urls: 'stun:stun.qq.com' }, // China/Asia region
   
   // Public STUN servers with good connectivity in Asia
   { urls: 'stun:stun.stunprotocol.org:3478' },
+  { urls: 'stun:stun.voipbuster.com' },
   { urls: 'stun:stun.counterpath.com:3478' },
+  { urls: 'stun:stun.counterpath.net:3478' },
+  { urls: 'stun:stun.1und1.de:3478' },
+  { urls: 'stun:stun.gmx.net:3478' },
+  { urls: 'stun:stun.ipfire.org:3478' },
+  { urls: 'stun:stun.ippi.fr:3478' },
+  { urls: 'stun:stun.qq.com' }, // China/Asia region
   
-  // TURN servers essential for NAT traversal (multiple options for reliability)
+  // TURN servers essential for NAT traversal in restrictive networks (common in India)
+  { 
+    urls: 'turn:openrelay.metered.ca:80', 
+    username: 'openrelayproject', 
+    credential: 'openrelayproject'
+  },
+  { 
+    urls: 'turn:openrelay.metered.ca:443', 
+    username: 'openrelayproject', 
+    credential: 'openrelayproject'
+  },
   { 
     urls: 'turn:openrelay.metered.ca:443?transport=tcp', 
     username: 'openrelayproject', 
@@ -43,6 +62,21 @@ const iceServers = [
     username: 'webrtc',
     credential: 'webrtc'
   },
+  { 
+    urls: 'turn:turn.anyfirewall.com:443',
+    username: 'webrtc',
+    credential: 'webrtc'
+  },
+  {
+    urls: 'turn:relay.metered.ca:80',
+    username: 'ba6a513cc3f4d431a554',
+    credential: 'y+r3nHXLyGGg4Kyk'
+  },
+  {
+    urls: 'turn:relay.metered.ca:443',
+    username: 'ba6a513cc3f4d431a554',
+    credential: 'y+r3nHXLyGGg4Kyk'
+  },
   {
     urls: 'turn:relay.metered.ca:443?transport=tcp',
     username: 'ba6a513cc3f4d431a554',
@@ -50,46 +84,16 @@ const iceServers = [
   },
   // Singapore region TURN server for Asia/India connections
   {
-    urls: 'turn:singapore.relay.metered.ca:443?transport=tcp',
-    username: 'ba6a513cc3f4d431a554',
-    credential: 'y+r3nHXLyGGg4Kyk'
-  },
-  // India-specific TURN servers
-  {
-    urls: 'turn:mumbai.relay.metered.ca:443?transport=tcp',
+    urls: 'turn:singapore.relay.metered.ca:80',
     username: 'ba6a513cc3f4d431a554',
     credential: 'y+r3nHXLyGGg4Kyk'
   },
   {
-    urls: 'turn:mumbai.relay.metered.ca:80',
+    urls: 'turn:singapore.relay.metered.ca:443',
     username: 'ba6a513cc3f4d431a554',
     credential: 'y+r3nHXLyGGg4Kyk'
   }
 ];
-
-// Key connection constants
-const CONNECTION_TIMEOUT = 1500; // Reduced from 3000ms to 1500ms for faster connection retries
-const RETRY_INTERVAL = 50; // Faster retry interval (was 100ms)
-const ICE_GATHERING_TIMEOUT = 1000; // 1 second timeout for ICE gathering
-const MEDIA_CONSTRAINTS = {
-  video: {
-    width: { ideal: 120, max: 160 }, // Ultra-low resolution for initial connection
-    height: { ideal: 90, max: 120 },
-    facingMode: "user",
-    frameRate: { ideal: 6, max: 10 } // Lower framerate for better performance
-  },
-  audio: {
-    echoCancellation: true,
-    noiseSuppression: true,
-    autoGainControl: true,
-    sampleRate: 11025, // Even lower sample rate (was 16000)
-    channelCount: 1 // Mono audio
-  }
-};
-
-// WebRTC caching for faster reconnection
-const peerConnectionCache = new Map();
-const sdpCache = new Map();
 
 const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) => {
   const { user } = useAuth();
@@ -107,77 +111,52 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRefs = useRef<Map<string, HTMLVideoElement | null>>(new Map());
   const connectionTimeouts = useRef<Map<string, NodeJS.Timeout>>(new Map());
-  const audioGainNodes = useRef<Map<string, GainNode>>(new Map());
-  const audioContexts = useRef<Map<string, AudioContext>>(new Map());
-  const connectionAttempts = useRef<Map<string, number>>(new Map());
-  const lastIceCandidateTime = useRef<Map<string, number>>(new Map());
   
-  // Clear timeouts on unmount
   useEffect(() => {
     return () => {
       connectionTimeouts.current.forEach((timeout) => {
         clearTimeout(timeout);
       });
-      
-      // Close all audio contexts
-      audioContexts.current.forEach((context) => {
-        try {
-          context.close();
-        } catch (e) {
-          console.warn('Error closing audio context:', e);
-        }
-      });
     };
   }, []);
-  
-  // Initialize cached connection data when room changes
-  useEffect(() => {
-    // Clear existing caches when room changes
-    peerConnectionCache.clear();
-    sdpCache.clear();
-    
-    // Prefetch STUN/TURN servers for faster connection
-    if (window.RTCPeerConnection) {
-      try {
-        const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-        pc.createDataChannel('prefetch');
-        
-        pc.createOffer()
-          .then(offer => pc.setLocalDescription(offer))
-          .catch(e => console.warn('Prefetch error:', e))
-          .finally(() => {
-            setTimeout(() => {
-              pc.close();
-            }, 500);
-          });
-      } catch (e) {
-        console.warn('Error prefetching ICE servers:', e);
-      }
-    }
-  }, [roomId]);
   
   useEffect(() => {
     const getMedia = async () => {
       try {
-        console.log('Requesting ultra-low resolution media for fast connection');
+        console.log('Requesting user media (camera & microphone)');
         
-        // Use extremely low resolution initially for instant connection
-        const stream = await navigator.mediaDevices.getUserMedia(MEDIA_CONSTRAINTS);
+        // Very low resolution and framerate for initial fast connection
+        // Optimized for Indian internet connections
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: {
+            width: { ideal: 160, max: 240 }, // Very low resolution for initial connection
+            height: { ideal: 120, max: 180 },
+            facingMode: "user",
+            frameRate: { ideal: 8, max: 12 } // Lower framerate for better performance on limited bandwidth
+          }, 
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            sampleRate: 16000, // Lower sample rate for better network performance
+            channelCount: 1 // Mono audio to reduce bandwidth
+          } 
+        });
         
         console.log(`Stream obtained with ${stream.getTracks().length} tracks:`, 
           stream.getTracks().map(t => `${t.kind}: ${t.label} (${t.enabled ? 'enabled' : 'disabled'})`).join(', '));
         
-        // Add aggressive constraints for rapid connection
-        stream.getVideoTracks().forEach(track => {
+        // Set audio track constraints for better performance
+        stream.getAudioTracks().forEach(track => {
           if (track.getConstraints) {
             try {
               track.applyConstraints({
-                width: { ideal: 120, max: 160 },
-                height: { ideal: 90, max: 120 },
-                frameRate: { ideal: 6, max: 10 }
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true
               });
             } catch (e) {
-              console.warn('Could not apply video constraints:', e);
+              console.warn('Could not apply audio constraints:', e);
             }
           }
         });
@@ -192,16 +171,16 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
             userId: user?.id || user?._id
           });
           
-          // Immediate reconnection attempt for faster establishment
+          // Faster timeout for rapid connection
           setTimeout(() => {
             retryConnections();
-          }, 20); // Ultra-fast timeout
+          }, 50);
         }
         
       } catch (error) {
         console.error("Error accessing media devices:", error);
         
-        // Try audio-only immediately if video fails
+        // Try fallback to just audio if video fails
         try {
           console.log('Trying audio-only as fallback');
           const audioOnlyStream = await navigator.mediaDevices.getUserMedia({ 
@@ -209,7 +188,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
               echoCancellation: true,
               noiseSuppression: true,
               autoGainControl: true,
-              sampleRate: 11025,
+              sampleRate: 16000,
               channelCount: 1
             },
             video: false
@@ -220,8 +199,8 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
           setIsLoading(false);
           
           toast({
-            title: "Audio-only mode",
-            description: "Using audio only for faster connection.",
+            title: "Camera not available",
+            description: "Using audio only mode.",
             variant: "warning",
           });
           
@@ -231,9 +210,10 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
               userId: user?.id || user?._id
             });
             
+            // Faster reconnect for audio-only
             setTimeout(() => {
               retryConnections();
-            }, 20);
+            }, 50);
           }
         } catch (audioError) {
           console.error("Error accessing audio devices:", audioError);
@@ -241,7 +221,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
           
           toast({
             title: "Media access failed",
-            description: "Could not access microphone. Check permissions.",
+            description: "Could not access camera or microphone. Check permissions.",
             variant: "destructive",
           });
         }
@@ -272,7 +252,6 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
     };
   }, [roomId, socket, user?.id, user?._id]);
   
-  // Socket event handlers and peer connection setup
   useEffect(() => {
     if (!socket || !localStream || !user) return;
     
@@ -281,7 +260,6 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
     
     console.log('Setting up WebRTC connections with active users:', activeUsers);
     
-    // Create immediate connections to all users
     activeUsers.forEach(activeUser => {
       if (activeUser.id !== userId && activeUser.id !== socket.id) {
         console.log(`Creating peer connection with user ${activeUser.id}`);
@@ -298,40 +276,36 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
     };
     
     const handleOffer = async (data: any) => {
+      console.log('Received offer:', data);
+      
       if (data.target === socket.id) {
         console.log(`Got offer from ${data.sender}, creating answer`);
         
         const pc = peerConnections.get(data.sender) || createPeerConnection(data.sender);
         
         try {
-          // Cache the SDP for faster reconnection
-          sdpCache.set(`offer-${data.sender}`, data.sdp);
-          
           await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
           console.log('Remote description set successfully from offer');
           
-          // Apply any buffered ICE candidates immediately
           const bufferedCandidates = iceCandidatesBuffer.get(data.sender) || [];
           console.log(`Applying ${bufferedCandidates.length} buffered ICE candidates for ${data.sender}`);
           
           for (const candidate of bufferedCandidates) {
             try {
               await pc.addIceCandidate(candidate);
+              console.log('Applied buffered ICE candidate');
             } catch (err) {
               console.error('Error applying buffered ICE candidate:', err);
             }
           }
           
-          const answer = await pc.createAnswer({
-            iceRestart: true
-          });
-          
-          // Cache the SDP for faster reconnection
-          sdpCache.set(`answer-${data.sender}`, answer);
+          const answer = await pc.createAnswer();
+          console.log('Created answer:', answer);
           
           await pc.setLocalDescription(answer);
+          console.log('Local description set successfully for answer');
           
-          // Send answer immediately
+          console.log(`Sending answer to ${data.sender}`);
           socket.emit('answer', {
             sender: socket.id,
             target: data.sender,
@@ -346,34 +320,38 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
           });
         } catch (error) {
           console.error('Error creating answer:', error);
+          setConnectionStatus(prev => {
+            const newStatus = new Map(prev);
+            newStatus.set(data.sender, 'failed');
+            return newStatus;
+          });
           
-          // Rapid retry on error
-          setTimeout(() => {
-            socket.emit('retryConnection', {
-              targetId: data.sender,
-              roomId
-            });
-          }, 50);
+          toast({
+            title: "Connection error",
+            description: "Failed to establish video connection. Try refreshing.",
+            variant: "destructive",
+          });
         }
       }
     };
     
     const handleAnswer = async (data: any) => {
+      console.log('Received answer:', data);
       if (data.target === socket.id) {
         const pc = peerConnections.get(data.sender);
         if (pc) {
+          console.log(`Setting remote description from ${data.sender}`);
           try {
-            // Cache the SDP for faster reconnection
-            sdpCache.set(`answer-${data.sender}`, data.sdp);
-            
             await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+            console.log('Remote description set successfully from answer');
             
-            // Apply any buffered ICE candidates immediately
             const bufferedCandidates = iceCandidatesBuffer.get(data.sender) || [];
+            console.log(`Applying ${bufferedCandidates.length} buffered ICE candidates after answer`);
             
             for (const candidate of bufferedCandidates) {
               try {
                 await pc.addIceCandidate(candidate);
+                console.log('Applied buffered ICE candidate after answer');
               } catch (err) {
                 console.error('Error applying buffered ICE candidate after answer:', err);
               }
@@ -390,32 +368,30 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
             });
           } catch (error) {
             console.error('Error setting remote description from answer:', error);
-            
-            // Rapid retry on error
-            setTimeout(() => {
-              socket.emit('retryConnection', {
-                targetId: data.sender,
-                roomId
-              });
-            }, 50);
+            setConnectionStatus(prev => {
+              const newStatus = new Map(prev);
+              newStatus.set(data.sender, 'failed');
+              return newStatus;
+            });
           }
+        } else {
+          console.warn(`Received answer from ${data.sender} but no peer connection exists`);
         }
       }
     };
     
     const handleIceCandidate = async (data: any) => {
+      console.log('Received ICE candidate:', data);
       if (data.target === socket.id) {
         const pc = peerConnections.get(data.sender);
         
         if (pc) {
           const iceCandidate = new RTCIceCandidate(data.candidate);
           
-          // Update last ICE candidate time for this connection
-          lastIceCandidateTime.current.set(data.sender, Date.now());
-          
           if (pc.remoteDescription && pc.remoteDescription.type) {
             try {
               await pc.addIceCandidate(iceCandidate);
+              console.log(`Added ICE candidate from ${data.sender}`);
             } catch (error) {
               console.error('Error adding ICE candidate:', error);
             }
@@ -425,18 +401,17 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
             currentBuffer.push(iceCandidate);
             newBuffer.set(data.sender, currentBuffer);
             setIceCandidatesBuffer(newBuffer);
+            console.log(`Buffering ICE candidate from ${data.sender} for future peer connection`);
           }
         } else {
-          // Buffer ICE candidates for future use
+          console.warn(`Received ICE candidate from ${data.sender} but no peer connection exists`);
+          
           const newBuffer = new Map(iceCandidatesBuffer);
           const iceCandidate = new RTCIceCandidate(data.candidate);
           const currentBuffer = newBuffer.get(data.sender) || [];
           currentBuffer.push(iceCandidate);
           newBuffer.set(data.sender, currentBuffer);
           setIceCandidatesBuffer(newBuffer);
-          
-          // Create peer connection if it doesn't exist yet
-          createPeerConnection(data.sender);
         }
       }
     };
@@ -448,6 +423,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
         const pc = peerConnections.get(remoteUserId);
         if (pc) {
           pc.close();
+          console.log(`Closing peer connection with user ${remoteUserId}`);
           
           const newPeerConnections = new Map(peerConnections);
           newPeerConnections.delete(remoteUserId);
@@ -465,39 +441,22 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
           newBuffer.delete(remoteUserId);
           setIceCandidatesBuffer(newBuffer);
           
-          // Clear associated timeouts and audio nodes
           if (connectionTimeouts.current.has(remoteUserId)) {
             clearTimeout(connectionTimeouts.current.get(remoteUserId)!);
             connectionTimeouts.current.delete(remoteUserId);
-          }
-          
-          if (audioGainNodes.current.has(remoteUserId)) {
-            audioGainNodes.current.delete(remoteUserId);
-          }
-          
-          if (audioContexts.current.has(remoteUserId)) {
-            try {
-              audioContexts.current.get(remoteUserId)?.close();
-            } catch (e) {
-              console.warn('Error closing audio context:', e);
-            }
-            audioContexts.current.delete(remoteUserId);
           }
         }
       }
     };
     
     const handleStreamReady = (data: any) => {
+      console.log('Stream ready event received:', data);
       if (data.userId !== userId) {
         setTimeout(() => {
           const pc = peerConnections.get(data.userId);
           if (pc) {
             console.log(`Peer ${data.userId} is ready with media, renegotiating`);
-            pc.createOffer({
-              offerToReceiveAudio: true,
-              offerToReceiveVideo: true,
-              iceRestart: true
-            })
+            pc.createOffer()
               .then(offer => pc.setLocalDescription(offer))
               .then(() => {
                 if (socket && pc.localDescription) {
@@ -511,9 +470,10 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
               })
               .catch(err => console.error('Error creating renegotiation offer:', err));
           } else {
+            console.log(`Creating new peer connection with ${data.userId} after stream ready`);
             createPeerConnection(data.userId);
           }
-        }, 20); // Ultra-fast timeout
+        }, 50); // Reduced timeout for faster connection
       }
     };
     
@@ -527,10 +487,11 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
         setPeerConnections(newPCs);
       }
       
-      setTimeout(() => createPeerConnection(data.sender), 20); // Ultra-fast timeout
+      setTimeout(() => createPeerConnection(data.sender), 50); // Faster timeout
     };
     
     const handleReconnectPeers = (data: any) => {
+      console.log('Reconnect peers event received:', data);
       if (data.fromSocketId !== socket.id) {
         console.log(`Reconnecting with peer ${data.fromSocketId}`);
         
@@ -562,11 +523,10 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
               })
               .catch(err => console.error('Error creating offer after reconnect:', err));
           }
-        }, 20); // Ultra-fast timeout
+        }, 50); // Even faster timeout
       }
     };
     
-    // Register event listeners
     socket.on('userJoined', handleUserJoined);
     socket.on('offer', handleOffer);
     socket.on('answer', handleAnswer);
@@ -577,7 +537,6 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
     socket.on('reconnectPeers', handleReconnectPeers);
     
     return () => {
-      // Clean up event listeners
       socket.off('userJoined', handleUserJoined);
       socket.off('offer', handleOffer);
       socket.off('answer', handleAnswer);
@@ -589,35 +548,27 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
     };
   }, [socket, localStream, activeUsers, user, peerConnections, remoteStreams, iceCandidatesBuffer, roomId]);
   
-  // Create and configure a peer connection
   const createPeerConnection = (remoteUserId: string) => {
     if (!socket || !localStream || !user) return null;
     
     const userId = user.id || user._id;
     if (!userId) return null;
     
-    // Use existing connection if available
     if (peerConnections.has(remoteUserId)) {
+      console.log(`Using existing peer connection for user ${remoteUserId}`);
       return peerConnections.get(remoteUserId)!;
     }
     
-    // Track connection attempts for this peer
-    const attempts = connectionAttempts.current.get(remoteUserId) || 0;
-    connectionAttempts.current.set(remoteUserId, attempts + 1);
+    console.log(`Creating new RTCPeerConnection for user ${remoteUserId} with ICE servers`, iceServers);
     
-    // Create new peer connection with optimized configuration
     const pc = new RTCPeerConnection({
       iceServers,
-      iceCandidatePoolSize: 5,
+      iceCandidatePoolSize: 10,
       bundlePolicy: 'max-bundle',
       rtcpMuxPolicy: 'require',
       iceTransportPolicy: 'all'
     });
     
-    // Cache the connection for potential reuse
-    peerConnectionCache.set(remoteUserId, pc);
-    
-    // Add local tracks to the connection
     if (localStream) {
       console.log(`Adding ${localStream.getTracks().length} local tracks to peer connection`);
       
@@ -625,21 +576,19 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
         console.log(`Adding track: ${track.kind} (${track.enabled ? 'enabled' : 'disabled'})`);
         const sender = pc.addTrack(track, localStream);
         
-        // Optimize encoding parameters based on track type
         if (sender.setParameters && sender.getParameters) {
           try {
             const params = sender.getParameters();
             if (track.kind === 'video' && params.encodings) {
-              // Ultra-low video bitrate for initial connection
               params.encodings.forEach(encoding => {
-                encoding.maxBitrate = 100000; // 100 Kbps for video
+                encoding.maxBitrate = 150000;
                 encoding.priority = 'low';
               });
               sender.setParameters(params).catch(e => console.warn('Could not set video parameters:', e));
             } else if (track.kind === 'audio' && params.encodings) {
-              // Prioritize audio quality and stability
+              // Prioritize audio quality
               params.encodings.forEach(encoding => {
-                encoding.maxBitrate = 24000; // Adequate for voice
+                encoding.maxBitrate = 32000; // Slightly higher for better audio
                 encoding.priority = 'high';
               });
               sender.setParameters(params).catch(e => console.warn('Could not set audio parameters:', e));
@@ -649,43 +598,27 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
           }
         }
       });
+    } else {
+      console.warn('No local stream available to add to the peer connection');
     }
     
-    // Handle incoming tracks
     pc.ontrack = (event) => {
       console.log(`Received tracks from ${remoteUserId}:`, event.streams);
       if (event.streams && event.streams[0]) {
         const stream = event.streams[0];
+        console.log(`Setting remote stream for user ${remoteUserId} with ${stream.getTracks().length} tracks`);
         
-        // Create audio context for volume boost (4-5x amplification)
-        try {
-          if (window.AudioContext || (window as any).webkitAudioContext) {
-            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-            const audioContext = new AudioContextClass();
-            audioContexts.current.set(remoteUserId, audioContext);
-            
-            const source = audioContext.createMediaStreamSource(stream);
-            const gainNode = audioContext.createGain();
-            gainNode.gain.value = 4.5; // Boost volume 4.5x (significantly louder)
-            audioGainNodes.current.set(remoteUserId, gainNode);
-            
-            source.connect(gainNode);
-            const destination = audioContext.createMediaStreamDestination();
-            gainNode.connect(destination);
-            
-            // Replace audio tracks with amplified ones
-            const audioTracks = stream.getAudioTracks();
-            audioTracks.forEach(track => {
-              stream.removeTrack(track);
-            });
-            
-            destination.stream.getAudioTracks().forEach(track => {
-              stream.addTrack(track);
-            });
+        stream.getAudioTracks().forEach(track => {
+          try {
+            track.applyConstraints({
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true
+            }).catch(e => console.warn('Could not apply audio constraints to remote track:', e));
+          } catch (e) {
+            console.warn('Error applying constraints to remote audio:', e);
           }
-        } catch (e) {
-          console.warn('Error setting up audio amplification:', e);
-        }
+        });
         
         setRemoteStreams(prev => {
           const newMap = new Map(prev);
@@ -707,27 +640,29 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
             videoElement.playsInline = true;
             videoElement.autoplay = true;
             videoElement.muted = false;
-            videoElement.volume = 1.0;
+            videoElement.volume = 3.0;
           } catch (e) {
             console.warn('Error setting video element properties:', e);
           }
           
-          // Force play with retry
-          const playWithRetry = (attempts = 0) => {
-            videoElement.play().catch(e => {
-              console.error("Remote video autoplay failed:", e);
-              if (attempts < 3) {
-                setTimeout(() => playWithRetry(attempts + 1), 100);
-              } else {
-                console.error("Failed to autoplay after retries. Browser may require user interaction.");
-                // No longer muting here as this defeats the purpose
-                // Just continue trying to play
-                setTimeout(() => playWithRetry(attempts + 1), 1000);
+          videoElement.play().catch(e => {
+            console.error("Remote video autoplay failed:", e);
+            videoElement.muted = false;
+            videoElement.play().catch(err => {
+              console.error("Muted remote video autoplay also failed:", err);
+              const parent = videoElement.parentElement;
+              if (parent) {
+                const playButton = document.createElement('button');
+                playButton.innerText = 'Click to Hear Audio';
+                playButton.className = 'absolute inset-0 bg-black/50 flex items-center justify-center text-white';
+                playButton.onclick = () => {
+                  videoElement.play();
+                  playButton.remove();
+                };
+                parent.appendChild(playButton);
               }
             });
-          };
-          
-          playWithRetry();
+          });
         }
         
         if (connectionTimeouts.current.has(remoteUserId)) {
@@ -737,12 +672,9 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
       }
     };
     
-    // ICE candidate handling
     pc.onicecandidate = (event) => {
       if (event.candidate && socket && socket.connected) {
-        // Record time of last ICE candidate
-        lastIceCandidateTime.current.set(remoteUserId, Date.now());
-        
+        console.log(`Sending ICE candidate to ${remoteUserId}`);
         socket.emit('iceCandidate', {
           sender: socket.id,
           target: remoteUserId,
@@ -751,23 +683,12 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
         });
       } else if (!event.candidate) {
         console.log('ICE candidate gathering complete');
-        
-        // Set timeout to force connection if ICE gathering takes too long
-        setTimeout(() => {
-          const status = connectionStatus.get(remoteUserId);
-          if (status !== 'connected' && status !== 'completed') {
-            console.log('ICE gathering timed out, forcing connection attempt');
-            socket.emit('retryConnection', {
-              targetId: remoteUserId,
-              roomId
-            });
-          }
-        }, ICE_GATHERING_TIMEOUT);
       }
     };
     
-    // Connection negotiation
     pc.onnegotiationneeded = () => {
+      console.log(`Negotiation needed for connection with ${remoteUserId}`);
+      
       if (socket && socket.id < remoteUserId) {
         console.log(`Creating offer to ${remoteUserId} after negotiation needed`);
         pc.createOffer({ 
@@ -776,10 +697,12 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
           iceRestart: true
         })
           .then(offer => {
+            console.log(`Created offer for ${remoteUserId}:`, offer);
             return pc.setLocalDescription(offer);
           })
           .then(() => {
             if (socket && pc.localDescription) {
+              console.log(`Sending offer to ${remoteUserId}`);
               socket.emit('offer', {
                 sender: socket.id,
                 target: remoteUserId,
@@ -790,19 +713,10 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
           })
           .catch(err => {
             console.error('Error creating offer after negotiation needed:', err);
-            
-            // Rapid retry on error
-            setTimeout(() => {
-              socket.emit('retryConnection', {
-                targetId: remoteUserId,
-                roomId
-              });
-            }, 50);
           });
       }
     };
     
-    // ICE connection state handling
     pc.oniceconnectionstatechange = () => {
       console.log(`ICE connection state changed to: ${pc.iceConnectionState} for user ${remoteUserId}`);
       
@@ -812,8 +726,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
         return newStatus;
       });
       
-      // Fast recovery from connection issues
-      if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
+      if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'checking' && connectionTimeouts.current.has(remoteUserId)) {
         console.log(`Connection ${pc.iceConnectionState} with ${remoteUserId}, attempting immediate retry...`);
         
         if (socket && socket.connected) {
@@ -833,11 +746,12 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
       }
     };
     
-    // Connection state handling
     pc.onconnectionstatechange = () => {
       console.log(`Connection state changed to: ${pc.connectionState} for user ${remoteUserId}`);
       
       if (pc.connectionState === 'failed') {
+        console.log(`Connection with ${remoteUserId} failed, will try to restart ICE`);
+        
         if (typeof pc.restartIce === 'function') {
           pc.restartIce();
         }
@@ -849,87 +763,48 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
               roomId
             });
           }
-        }, 50); // Ultra-fast retry
+        }, 300); // Faster timeout
       }
     };
     
-    // Signaling state handling
     pc.onsignalingstatechange = () => {
       console.log(`Signaling state changed to: ${pc.signalingState} for user ${remoteUserId}`);
     };
     
-    // Initiate connection if our ID is lower (to avoid duplicating offers)
     if (socket && socket.id < remoteUserId) {
       console.log(`User ${socket.id} initiating connection to ${remoteUserId}`);
       
-      // Reuse previous SDP if available for faster reconnection
-      const cachedOffer = sdpCache.get(`offer-${remoteUserId}`);
-      
-      if (cachedOffer && attempts > 0) {
-        console.log('Using cached offer for faster reconnection');
-        try {
-          pc.setLocalDescription(cachedOffer)
-            .then(() => {
-              socket.emit('offer', {
-                sender: socket.id,
-                target: remoteUserId,
-                sdp: cachedOffer,
-                roomId
-              });
-            })
-            .catch(err => {
-              console.warn('Error using cached offer:', err);
-              createFreshOffer();
-            });
-        } catch (e) {
-          console.warn('Error applying cached offer:', e);
-          createFreshOffer();
-        }
-      } else {
-        createFreshOffer();
-      }
-      
-      function createFreshOffer() {
-        pc.createOffer({ 
-          offerToReceiveAudio: true, 
-          offerToReceiveVideo: true,
-          iceRestart: true
+      pc.createOffer({ 
+        offerToReceiveAudio: true, 
+        offerToReceiveVideo: true,
+        iceRestart: true
+      })
+        .then(offer => {
+          console.log(`Created offer for ${remoteUserId}:`, offer);
+          return pc.setLocalDescription(offer);
         })
-          .then(offer => {
-            sdpCache.set(`offer-${remoteUserId}`, offer);
-            return pc.setLocalDescription(offer);
-          })
-          .then(() => {
-            if (socket && pc.localDescription) {
-              socket.emit('offer', {
-                sender: socket.id,
-                target: remoteUserId,
-                sdp: pc.localDescription,
-                roomId
-              });
-            }
-          })
-          .catch(err => {
-            console.error('Error creating offer:', err);
-            
-            toast({
-              title: "Connection issue",
-              description: "Trying to reconnect...",
-              variant: "destructive",
+        .then(() => {
+          if (socket && pc.localDescription) {
+            console.log(`Sending offer to ${remoteUserId}`);
+            socket.emit('offer', {
+              sender: socket.id,
+              target: remoteUserId,
+              sdp: pc.localDescription,
+              roomId
             });
-            
-            // Immediate retry
-            setTimeout(() => {
-              socket.emit('retryConnection', {
-                targetId: remoteUserId,
-                roomId
-              });
-            }, 50);
+          }
+        })
+        .catch(err => {
+          console.error('Error creating offer:', err);
+          toast({
+            title: "Connection error",
+            description: "Failed to connect to other participant. Try refreshing.",
+            variant: "destructive",
           });
-      }
+        });
     }
     
-    // Set a faster connection timeout
+    // Reduce timeout to 3 seconds for faster connection recovery 
     const connectionTimeout = setTimeout(() => {
       const status = connectionStatus.get(remoteUserId);
       if (status !== 'connected' && status !== 'completed') {
@@ -950,18 +825,16 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
           }
         }
       }
-    }, CONNECTION_TIMEOUT);
+    }, 3000);
     
     connectionTimeouts.current.set(remoteUserId, connectionTimeout);
     
-    // Update peer connections state
     setPeerConnections(prev => {
       const newMap = new Map(prev);
       newMap.set(remoteUserId, pc);
       return newMap;
     });
     
-    // Update connection status
     setConnectionStatus(prev => {
       const newStatus = new Map(prev);
       newStatus.set(remoteUserId, 'new');
@@ -971,22 +844,14 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
     return pc;
   };
   
-  // Set local video stream
   useEffect(() => {
     if (localVideoRef.current && localStream) {
+      console.log('Setting local video stream with tracks:', 
+        localStream.getTracks().map(t => `${t.kind}: ${t.label} (${t.enabled ? 'enabled' : 'disabled'})`).join(', '));
       localVideoRef.current.srcObject = localStream;
-      
-      try {
-        localVideoRef.current.play().catch(e => {
-          console.warn('Could not autoplay local video:', e);
-        });
-      } catch (e) {
-        console.warn('Error playing local video:', e);
-      }
     }
   }, [localStream]);
   
-  // Track enable/disable handling
   useEffect(() => {
     if (localStream) {
       const videoTracks = localStream.getVideoTracks();
@@ -994,6 +859,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
         videoTracks.forEach(track => {
           track.enabled = isCameraActive;
         });
+        console.log(`Local camera ${isCameraActive ? 'enabled' : 'disabled'}`);
       }
       
       const audioTracks = localStream.getAudioTracks();
@@ -1001,11 +867,11 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
         audioTracks.forEach(track => {
           track.enabled = isMicActive;
         });
+        console.log(`Local microphone ${isMicActive ? 'enabled' : 'disabled'}`);
       }
     }
   }, [isCameraActive, isMicActive, localStream]);
   
-  // Toggle audio
   const toggleMic = () => {
     setIsMicActive(!isMicActive);
     
@@ -1018,7 +884,6 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
     }
   };
   
-  // Toggle video
   const toggleCamera = () => {
     setIsCameraActive(!isCameraActive);
     
@@ -1031,69 +896,49 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
     }
   };
   
-  // Retry all connections
   const retryConnections = () => {
     console.log('Manually retrying all connections');
     
-    // Close existing connections
     peerConnections.forEach((connection, userId) => {
       connection.close();
     });
     
-    // Reset state
     setPeerConnections(new Map());
     setRemoteStreams(new Map());
     setConnectionStatus(new Map());
     setIceCandidatesBuffer(new Map());
     
     if (socket) {
-      // Request reconnection
       socket.emit('requestReconnect', { roomId });
       
-      // Create new connections with minimal delay
       setTimeout(() => {
         activeUsers.forEach(activeUser => {
           if (activeUser.id !== (user?.id || user?._id)) {
             createPeerConnection(activeUser.id);
           }
         });
-      }, 20);
+      }, 50); // Even faster than before
     }
     
     toast({
       title: "Reconnecting",
-      description: "Reconnecting to all participants...",
+      description: "Attempting to reconnect to all participants...",
     });
   };
   
-  // Leave call
   const leaveCall = () => {
     if (localStream) {
       localStream.getTracks().forEach(track => track.stop());
       setLocalStream(null);
     }
     
-    // Close all peer connections
     peerConnections.forEach(connection => {
       connection.close();
     });
     
-    // Reset state
     setPeerConnections(new Map());
     setRemoteStreams(new Map());
     
-    // Close all audio contexts
-    audioContexts.current.forEach(context => {
-      try {
-        context.close();
-      } catch (e) {
-        console.warn('Error closing audio context:', e);
-      }
-    });
-    audioContexts.current.clear();
-    audioGainNodes.current.clear();
-    
-    // Leave room and disconnect
     if (socket) {
       socket.emit('leaveRoom', { roomId, userId: user?.id || user?._id });
       socket.disconnect();
@@ -1102,16 +947,13 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
     navigate('/rooms');
   };
   
-  // Filter participants
   const participants = activeUsers
     .filter(participant => (participant.id !== (user?.id || user?._id)) && participant.id !== socket?.id);
   
-  // Helper to get first name
   const getFirstName = (username: string) => {
     return username ? username.split(' ')[0] : '?';
   };
   
-  // Render UI
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-auto space-y-3 p-1">
@@ -1166,26 +1008,25 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
                 ref={el => {
                   if (el) {
                     el.srcObject = stream;
-                    el.autoplay = true;
-                    el.playsInline = true;
-                    el.muted = false;
                     remoteVideoRefs.current.set(userId, el);
                     
-                    // Auto-play with persistent retries
-                    (function attemptPlay(attempt = 0) {
-                      el.play().catch(err => {
-                        console.warn(`Auto-play attempt ${attempt} failed:`, err);
-                        
-                        // Keep trying every 300ms
-                        setTimeout(() => {
-                          if (attempt < 20) { // Keep trying for ~6 seconds
-                            attemptPlay(attempt + 1);
-                          }
-                        }, 300);
+                    el.play().catch(e => {
+                      console.error("Autoplay failed:", e);
+                    
+                      el.play().then(() => {
+                        const unmute = () => {
+                          el.muted = false;
+                          document.removeEventListener('click', unmute);
+                        };
+                        document.addEventListener('click', unmute);
+                      }).catch(err => {
+                        console.error("Muted autoplay also failed:", err);
                       });
-                    })();
+                    });
                   }
                 }}
+                autoPlay
+                playsInline
                 className="w-full h-full object-cover"
               ></video>
               <div className="absolute bottom-2 left-2 text-white text-xs font-medium bg-black/50 backdrop-blur-sm px-2 py-1 rounded-full">
@@ -1216,7 +1057,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
                   </div>
                   <div className="text-sm text-center bg-black/20 px-3 py-1 rounded-full">
                     {connectionState === 'failed' || connectionState === 'disconnected' ? (
-                      <span className="text-red-400">Reconnecting...</span>
+                      <span className="text-red-400">Connection failed</span>
                     ) : connectionState === 'connected' || connectionState === 'completed' ? (
                       <span className="text-green-400">Connected, waiting for media...</span>
                     ) : (
