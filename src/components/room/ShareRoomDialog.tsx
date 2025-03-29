@@ -128,7 +128,7 @@ const ShareRoomDialog: React.FC<ShareRoomDialogProps> = ({
           console.error('Error sharing room with existing user:', error);
           toast({
             title: "Error",
-            description: "Failed to share room. Please try again.",
+            description: "You should be a room owner to send the room.",
             variant: "destructive",
           });
           return;
