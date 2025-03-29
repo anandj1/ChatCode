@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
@@ -19,7 +20,6 @@ export const useRoomAccess = ({ onSuccess, onError }: UseRoomAccessProps) => {
   const [joinInProgress, setJoinInProgress] = useState(false);
   const allowRetry = useRef(true);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const connectionAttemptsRef = useRef(0);
 
   // Clear any existing timeouts on unmount
   useEffect(() => {
@@ -37,7 +37,6 @@ export const useRoomAccess = ({ onSuccess, onError }: UseRoomAccessProps) => {
       setLastJoinedRoom(null);
       setJoinInProgress(false);
       allowRetry.current = true;
-      connectionAttemptsRef.current = 0;
     };
   }, []);
 
@@ -73,36 +72,11 @@ export const useRoomAccess = ({ onSuccess, onError }: UseRoomAccessProps) => {
     const signal = abortControllerRef.current.signal;
     
     // Set a timeout to handle cases where the join attempt doesn't complete
-    // Reduced timeout for faster experience
     joinAttemptTimeout.current = setTimeout(() => {
       console.log("Join attempt timed out, cleaning up");
-      
-      // Try again if we haven't exceeded max attempts
-      if (connectionAttemptsRef.current < 3) {
-        connectionAttemptsRef.current++;
-        console.log(`Retrying connection, attempt ${connectionAttemptsRef.current}`);
-        
-        // Cancel the current fetch if it's still in progress
-        if (abortControllerRef.current) {
-          abortControllerRef.current.abort();
-          abortControllerRef.current = null;
-        }
-        
-        // Reset join in progress
-        setJoinInProgress(false);
-        
-        // Try to join again after a short delay
-        setTimeout(() => {
-          joinRoom(roomId, password);
-        }, 500);
-        
-        return;
-      }
-      
       setLoading(false);
       setJoinInProgress(false);
       allowRetry.current = true;
-      connectionAttemptsRef.current = 0;
       
       // Cancel the fetch if it's still in progress
       if (abortControllerRef.current) {
@@ -119,7 +93,7 @@ export const useRoomAccess = ({ onSuccess, onError }: UseRoomAccessProps) => {
       });
       
       if (onError) onError(errorMessage);
-    }, 8000); // Reduced timeout for faster experience
+    }, 15000);
 
     setLoading(true);
     setJoinInProgress(true);
@@ -130,9 +104,9 @@ export const useRoomAccess = ({ onSuccess, onError }: UseRoomAccessProps) => {
       const checkResponse = await fetch(buildApiUrl(`rooms/${roomId}`), {
         headers: {
           'Authorization': `Bearer ${token}`,
-          
-         
-        
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+          'Expires': '0'
         },
         signal
       });
@@ -145,63 +119,38 @@ export const useRoomAccess = ({ onSuccess, onError }: UseRoomAccessProps) => {
         
         const wsInstance = wsService.current;
         if (wsInstance) {
-          // Use ensureConnection to make sure we have a valid connection
-          const socket = wsInstance.ensureConnection(token);
+          const socket = wsInstance.connect(token);
           
           // Ensure socket is connected before attempting to join room
           if (socket.connected) {
             console.log(`Joining room ${roomId} with user ${user.id}`);
             wsInstance.joinRoom(roomId, user.id);
-            
-            // Clear timeout since we've connected successfully
-            if (joinAttemptTimeout.current) {
-              clearTimeout(joinAttemptTimeout.current);
-              joinAttemptTimeout.current = null;
-            }
-            
-            toast({
-              title: "Room joined",
-              description: "Successfully connected to room",
-              variant: "success",
-            });
-            
-            setLoading(false);
-            setJoinInProgress(false);
-            allowRetry.current = true;
-            connectionAttemptsRef.current = 0;
-            onSuccess(roomId, password);
           } else {
             console.log("Socket not connected, waiting to connect");
-            
-            // Set up a one-time connect event listener
             socket.once('connect', () => {
               console.log(`Socket connected, now joining room ${roomId}`);
               wsInstance.joinRoom(roomId, user.id, password);
-              
-              // Clear timeout since we've connected successfully
-              if (joinAttemptTimeout.current) {
-                clearTimeout(joinAttemptTimeout.current);
-                joinAttemptTimeout.current = null;
-              }
-              
-              toast({
-                title: "Room joined",
-                description: "Successfully connected to room",
-                variant: "success",
-              });
-              
-              setLoading(false);
-              setJoinInProgress(false);
-              allowRetry.current = true;
-              connectionAttemptsRef.current = 0;
-              onSuccess(roomId, password);
             });
           }
         } else {
           console.error("WebSocketService not available");
-          throw new Error("WebSocketService not available");
         }
         
+        toast({
+          title: "Room joined",
+          description: "Successfully connected to room",
+          variant: "success",
+        });
+        
+        if (joinAttemptTimeout.current) {
+          clearTimeout(joinAttemptTimeout.current);
+          joinAttemptTimeout.current = null;
+        }
+        
+        setLoading(false);
+        setJoinInProgress(false);
+        allowRetry.current = true;
+        onSuccess(roomId, password);
         return;
       }
       
@@ -222,7 +171,6 @@ export const useRoomAccess = ({ onSuccess, onError }: UseRoomAccessProps) => {
           setLoading(false);
           setJoinInProgress(false);
           allowRetry.current = true;
-          connectionAttemptsRef.current = 0;
           
           if (joinAttemptTimeout.current) {
             clearTimeout(joinAttemptTimeout.current);
@@ -258,63 +206,36 @@ export const useRoomAccess = ({ onSuccess, onError }: UseRoomAccessProps) => {
         
         const wsInstance = wsService.current;
         if (wsInstance) {
-          // Use ensureConnection instead of reconnect to avoid unnecessary disconnections
-          const socket = wsInstance.ensureConnection(token);
+          const socket = wsInstance.reconnect(token);
           
           // Ensure socket is connected before attempting to join
           if (socket.connected) {
             console.log(`Joining room ${roomId} with user ${user.id} after password verification`);
             wsInstance.joinRoom(roomId, user.id, password);
-            
-            // Clear timeout since we've connected successfully
-            if (joinAttemptTimeout.current) {
-              clearTimeout(joinAttemptTimeout.current);
-              joinAttemptTimeout.current = null;
-            }
-            
-            toast({
-              title: "Room joined",
-              description: "You have successfully joined the room",
-              variant: "success",
-            });
-            
-            setLoading(false);
-            setJoinInProgress(false);
-            allowRetry.current = true;
-            connectionAttemptsRef.current = 0;
-            onSuccess(roomId, password);
           } else {
             console.log("Socket not connected after password verification, waiting to connect");
-            
-            // Set up a one-time connect event listener
             socket.once('connect', () => {
               console.log(`Socket connected after password verification, now joining room ${roomId}`);
               wsInstance.joinRoom(roomId, user.id, password);
-              
-              // Clear timeout since we've connected successfully
-              if (joinAttemptTimeout.current) {
-                clearTimeout(joinAttemptTimeout.current);
-                joinAttemptTimeout.current = null;
-              }
-              
-              toast({
-                title: "Room joined",
-                description: "You have successfully joined the room",
-                variant: "success",
-              });
-              
-              setLoading(false);
-              setJoinInProgress(false);
-              allowRetry.current = true;
-              connectionAttemptsRef.current = 0;
-              onSuccess(roomId, password);
             });
           }
-        } else {
-          console.error("WebSocketService not available");
-          throw new Error("WebSocketService not available");
         }
         
+        toast({
+          title: "Room joined",
+          description: "You have successfully joined the room",
+          variant: "success",
+        });
+        
+        if (joinAttemptTimeout.current) {
+          clearTimeout(joinAttemptTimeout.current);
+          joinAttemptTimeout.current = null;
+        }
+        
+        setLoading(false);
+        setJoinInProgress(false);
+        allowRetry.current = true;
+        onSuccess(roomId, password);
         return;
       }
       
@@ -350,7 +271,6 @@ export const useRoomAccess = ({ onSuccess, onError }: UseRoomAccessProps) => {
       setLoading(false);
       setJoinInProgress(false);
       allowRetry.current = true;
-      connectionAttemptsRef.current = 0;
     }
   }, [token, user, toast, onSuccess, onError]);
 
