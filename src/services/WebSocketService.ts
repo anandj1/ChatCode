@@ -6,7 +6,7 @@ class WebSocketService {
   private socket: Socket | null = null;
   private connectionAttempts = 0;
   private maxReconnectAttempts = 5; // Increased for better reliability
-  private reconnectDelay = 200; // Reduced for faster reconnection
+  private reconnectDelay = 1000; // Reduced for faster reconnection
   private pingInterval: NodeJS.Timeout | null = null;
   private lastConnectedToken: string | null = null;
   private connectingPromise: Promise<Socket> | null = null;
@@ -59,7 +59,7 @@ class WebSocketService {
       transports: ['websocket', 'polling'], // Try websocket first, fall back to polling
       reconnectionAttempts: this.maxReconnectAttempts,
       reconnectionDelay: this.reconnectDelay,
-      timeout: 500, // Reduced timeout for faster connection
+      timeout: 1000, // Reduced timeout for faster connection
       autoConnect: true,
       forceNew: true, // Force a new connection to avoid reusing problematic connections
     });
