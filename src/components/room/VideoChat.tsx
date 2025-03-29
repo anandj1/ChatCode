@@ -640,20 +640,20 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
             videoElement.playsInline = true;
             videoElement.autoplay = true;
             videoElement.muted = false;
-            videoElement.volume = 1.0;
+            videoElement.volume = 3.0;
           } catch (e) {
             console.warn('Error setting video element properties:', e);
           }
           
           videoElement.play().catch(e => {
             console.error("Remote video autoplay failed:", e);
-            videoElement.muted = true;
+            videoElement.muted = false;
             videoElement.play().catch(err => {
               console.error("Muted remote video autoplay also failed:", err);
               const parent = videoElement.parentElement;
               if (parent) {
                 const playButton = document.createElement('button');
-                playButton.innerText = 'Click to Play';
+                playButton.innerText = 'Click to Hear Audio';
                 playButton.className = 'absolute inset-0 bg-black/50 flex items-center justify-center text-white';
                 playButton.onclick = () => {
                   videoElement.play();
