@@ -174,7 +174,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
           // Faster timeout for rapid connection
           setTimeout(() => {
             retryConnections();
-          }, 50);
+          }, 20);
         }
         
       } catch (error) {
@@ -213,7 +213,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
             // Faster reconnect for audio-only
             setTimeout(() => {
               retryConnections();
-            }, 50);
+            }, 20);
           }
         } catch (audioError) {
           console.error("Error accessing audio devices:", audioError);
@@ -473,7 +473,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
             console.log(`Creating new peer connection with ${data.userId} after stream ready`);
             createPeerConnection(data.userId);
           }
-        }, 50); // Reduced timeout for faster connection
+        }, 20); // Reduced timeout for faster connection
       }
     };
     
@@ -487,7 +487,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
         setPeerConnections(newPCs);
       }
       
-      setTimeout(() => createPeerConnection(data.sender), 50); // Faster timeout
+      setTimeout(() => createPeerConnection(data.sender), 20); // Faster timeout
     };
     
     const handleReconnectPeers = (data: any) => {
@@ -523,7 +523,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
               })
               .catch(err => console.error('Error creating offer after reconnect:', err));
           }
-        }, 50); // Even faster timeout
+        }, 20); // Even faster timeout
       }
     };
     
@@ -651,16 +651,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
             videoElement.play().catch(err => {
               console.error("Muted remote video autoplay also failed:", err);
               const parent = videoElement.parentElement;
-              if (parent) {
-                const playButton = document.createElement('button');
-                playButton.innerText = 'Click to Hear Audio';
-                playButton.className = 'absolute inset-0 bg-black/50 flex items-center justify-center text-white';
-                playButton.onclick = () => {
-                  videoElement.play();
-                  playButton.remove();
-                };
-                parent.appendChild(playButton);
-              }
+            
             });
           });
         }
@@ -917,7 +908,7 @@ const VideoChat: React.FC<VideoChatProps> = ({ roomId, socket, activeUsers }) =>
             createPeerConnection(activeUser.id);
           }
         });
-      }, 50); // Even faster than before
+      }, 20); // Even faster than before
     }
     
     toast({
