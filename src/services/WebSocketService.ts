@@ -1,3 +1,4 @@
+
 import { io, Socket } from 'socket.io-client';
 import { buildApiUrl } from '@/api/config';
 
@@ -5,8 +6,8 @@ class WebSocketService {
   private static instance: WebSocketService;
   private socket: Socket | null = null;
   private connectionAttempts = 0;
-  private maxReconnectAttempts = 5; // Increased for better reliability
-  private reconnectDelay = 1000; // Reduced for faster reconnection
+  private maxReconnectAttempts = 3;
+  private reconnectDelay = 1400;
   private pingInterval: NodeJS.Timeout | null = null;
   private lastConnectedToken: string | null = null;
   private connectingPromise: Promise<Socket> | null = null;
@@ -45,23 +46,19 @@ class WebSocketService {
     this.lastConnectedToken = token;
     this.connectionAttempts = 0;
 
-    let socketURL = import.meta.env.VITE_SOCKET_URL || 'https://chat-code-3fz6.onrender.com';
+    const apiUrl = buildApiUrl('').replace(/^http/, 'ws');
+    const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+    const wsUrl = baseUrl.replace('/api', '');
+
+    console.log(`Connecting to WebSocket at ${wsUrl}`);
     
-    // If in development and connecting to localhost, ensure the correct port
-    if (socketURL.includes('localhost') || socketURL.includes('127.0.0.1')) {
-      socketURL = 'http://localhost:5000';
-    }
-    
-    console.log(`Connecting to WebSocket at ${socketURL}`);
-    
-    this.socket = io(socketURL, {
+    this.socket = io(wsUrl, {
       auth: { token },
-      transports: ['websocket', 'polling'], // Try websocket first, fall back to polling
+      transports: ['websocket', 'polling'],
       reconnectionAttempts: this.maxReconnectAttempts,
       reconnectionDelay: this.reconnectDelay,
-      timeout: 1000, // Reduced timeout for faster connection
-      autoConnect: true,
-      forceNew: true, // Force a new connection to avoid reusing problematic connections
+      timeout: 10000,
+      autoConnect: true
     });
 
     this.setupSocketListeners();
@@ -71,24 +68,12 @@ class WebSocketService {
       this.connecting = false;
       console.log(`Socket connected with ID: ${this.socketId}`);
       this.startPingInterval();
-      
-      // Rejoin any rooms that were previously joined
-      this.joinedRooms.forEach(roomId => {
-        console.log(`Automatically rejoining room ${roomId} after reconnect`);
-        // We don't have userId here, so this needs to be handled elsewhere
-      });
     });
 
     this.socket.on('disconnect', (reason) => {
       console.log(`Socket disconnected: ${reason}`);
       this.socketId = null;
       this.stopPingInterval();
-      
-      // For certain disconnect reasons, we should immediately try to reconnect
-      if (reason === 'io server disconnect' || reason === 'transport close') {
-        console.log("Connection lost, attempting immediate reconnection");
-        this.socket?.connect();
-      }
     });
 
     return this.socket;
@@ -98,8 +83,7 @@ class WebSocketService {
     this.cleanupSocket();
     
     this.connecting = false;
-    // Do not clear joined rooms on reconnect
-    // this.joinedRooms.clear();
+    this.joinedRooms.clear();
     
     return this.connect(token);
   }
@@ -119,18 +103,6 @@ class WebSocketService {
     this.socket.on('reconnect_failed', () => {
       console.error('Failed to reconnect after maximum attempts');
       this.connecting = false;
-      
-      // After max reconnect failures, force a clean reconnection
-      if (this.lastConnectedToken) {
-        console.log("Forcing clean reconnection after failure");
-        setTimeout(() => {
-          this.reconnect(this.lastConnectedToken!);
-        }, 1000);
-      }
-    });
-    
-    this.socket.on('reconnect', (attemptNumber) => {
-      console.log(`Successfully reconnected after ${attemptNumber} attempts`);
     });
     
     this.socket.on('roomData', (room) => {
@@ -143,13 +115,10 @@ class WebSocketService {
 
   private cleanupSocket() {
     if (this.socket) {
-      console.log("Cleaning up socket connection");
       this.socket.offAny();
       
       if (this.socket.connected) {
-        // Only emit leave room if connected
         this.joinedRooms.forEach(roomId => {
-          console.log(`Emitting leaveRoom for ${roomId} during cleanup`);
           this.socket!.emit('leaveRoom', { roomId });
         });
         
@@ -160,7 +129,7 @@ class WebSocketService {
     }
     
     this.stopPingInterval();
-    // Don't clear joinedRooms here to allow reconnection
+    this.joinedRooms.clear();
     this.socketId = null;
   }
 
@@ -174,7 +143,7 @@ class WebSocketService {
       } else {
         this.stopPingInterval();
       }
-    }, 15000); // Reduced interval for more responsive connection maintenance
+    }, 25000);
   }
 
   private stopPingInterval() {
@@ -202,15 +171,11 @@ class WebSocketService {
 
     console.log(`Emitting joinRoom for ${roomId} with user ${userId}${password ? ' and password' : ''}`);
     this.socket.emit('joinRoom', { roomId, userId, password });
-    
-    // Optimistically add to joined rooms - will be confirmed by server response
-    this.joinedRooms.add(roomId);
   }
 
   public leaveRoom(roomId: string, userId: string) {
     if (!this.socket || !this.socket.connected) {
       console.log(`Cannot leave room ${roomId}: socket not connected`);
-      this.joinedRooms.delete(roomId); // Still remove from tracked rooms
       return;
     }
 
@@ -234,17 +199,6 @@ class WebSocketService {
 
   public disconnect() {
     this.cleanupSocket();
-    // Clear joined rooms on explicit disconnect
-    this.joinedRooms.clear();
-  }
-  
-  // Add method to check and rebuild connection if needed
-  public ensureConnection(token: string): Socket {
-    if (!this.socket || !this.socket.connected) {
-      console.log("Socket not connected, establishing new connection");
-      return this.connect(token);
-    }
-    return this.socket;
   }
 }
 
